@@ -96,10 +96,14 @@ ms.date: 2026-03-09
 ## Phase 11 — CI/CD and Azure Deployment
 
 - [x] Create GitHub Actions workflow (build, test, deploy)
+- [x] Create Bicep IaC files (main + modules: identity, postgres, storage, appservice)
+- [x] Create azd configuration (azure.yaml)
+- [x] Update CD workflow with infrastructure provisioning via Bicep
+- [x] Write deployment instructions (DEPLOY.md) for azd and az cli
+- [x] Parameterize resource group name for user customization
 - [ ] Configure Azure Managed Identity (federated credentials for GitHub Actions)
-- [ ] Provision Azure resources (App Service, PostgreSQL, Blob Storage)
-- [ ] Ask user to use Az cli to deploy with instructions
-- [ ] Configure CNAME in GoDaddy (no need to do this, the user will do it manually)
+- [ ] Provision Azure resources (run azd up or az deployment sub create)
+- [ ] Configure CNAME in GoDaddy (the user will do this manually)
 - [ ] Verify end-to-end deployment
 
 ## Phase 12 — PWA and Polish
@@ -118,3 +122,5 @@ ms.date: 2026-03-09
 > **Session 2**: Built all remaining pages and API routes: trip detail page with day selector and activity timeline, itinerary overview, places page with filtering, flights dashboard, document vault, settings page, and full CRUD API routes for trips/activities/places/documents. Added Umrah/prayer features: Aladhan API client for prayer times, prayer times widget with current/next prayer tracking, Umrah step-by-step checklist with 6 steps (du'as, tips, kid-friendly notes), du'as reference with 7 essential du'as, holy places guide for Makkah and Madinah, prayer times API route. Build compiles successfully with 22 routes total.
 >
 > **Session 3**: Installed @dnd-kit packages for drag-and-drop. Created comprehensive seed data script (prisma/seed.ts) with both trips fully populated. Built sortable activity list component with drag-and-drop reordering. Created Google Calendar bi-directional sync API routes (push/pull). Built nearby recommendations page with Google Places API, city selector, category filters, kid-friendly/open-now toggles. Configured PWA with manual service worker (offline page, cache-first strategy). Added Discover page to sidebar and bottom nav. Build compiles successfully with 26 routes.
+>
+> **Session 3 (continued)**: Created full Azure Bicep infrastructure: main.bicep (subscription-scoped with parameterized resource group name), main.parameters.json (azd-compatible), and four modules (identity, postgres, storage, appservice). Created azure.yaml for azd workflows. Updated GitHub Actions CD workflow with infrastructure provisioning job (Bicep deployment), proper standalone packaging, Prisma migration step, and workflow_dispatch for manual infra deployments. Wrote comprehensive DEPLOY.md with step-by-step instructions for both azd and az cli deployment, OIDC setup, and troubleshooting. Build compiles successfully with 26 routes.

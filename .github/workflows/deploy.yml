@@ -1,5 +1,6 @@
 # ─── Family Travel Companion App ─ CI/CD Pipeline ────────────────────────────
-# Builds and deploys to Azure App Service using OIDC federated credentials.
+# Builds, provisions Azure infrastructure (via Bicep), and deploys to
+# Azure App Service using OIDC federated credentials.
 # NO secrets stored — uses Azure Managed Identity throughout.
 
 name: Build and Deploy
@@ -9,14 +10,28 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_infra:
+        description: "Deploy infrastructure changes"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      resource_group_name:
+        description: "Resource group name (default: rg-prod)"
+        required: false
+        default: "rg-prod"
 
 permissions:
   id-token: write # Required for OIDC federated credential
   contents: read
 
 env:
-  AZURE_WEBAPP_NAME: family-travel-app # Update with your App Service name
   NODE_VERSION: "20.x"
+  AZURE_ENV_NAME: "prod"
 
 jobs:
   # ─── Build ─────────────────────────────────────────────────────────────────
@@ -44,32 +59,36 @@ jobs:
       - name: Build Next.js app
         run: npm run build
         env:
-          # These are needed at build time for Next.js
-          # but won't contain real values in CI — runtime values come from App Service config
           DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+
+      # Package standalone output with static assets and public folder
+      - name: Prepare deployment package
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          cp prisma -r .next/standalone/prisma
+          cp package.json .next/standalone/
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: nextjs-build
-          path: |
-            .next/standalone/
-            .next/static/
-            public/
+          path: .next/standalone/
           retention-days: 1
 
-  # ─── Deploy ────────────────────────────────────────────────────────────────
-  deploy:
+  # ─── Provision Infrastructure ──────────────────────────────────────────────
+  infra:
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true')
     environment: production
+    outputs:
+      webapp_name: ${{ steps.deploy-bicep.outputs.webappName }}
 
     steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: nextjs-build
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Login to Azure (OIDC Federated Credential)
         uses: azure/login@v2
@@ -78,11 +97,84 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Deploy Azure Infrastructure (Bicep)
+        id: deploy-bicep
+        uses: azure/arm-deploy@v2
+        with:
+          scope: subscription
+          region: ${{ vars.AZURE_LOCATION || 'eastus' }}
+          template: infra/main.bicep
+          parameters: >-
+            environmentName=${{ env.AZURE_ENV_NAME }}
+            resourceGroupName=${{ github.event.inputs.resource_group_name || vars.AZURE_RESOURCE_GROUP || 'rg-prod' }}
+            postgresAdminPassword=${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          deploymentName: family-travel-${{ github.run_number }}
+
+      - name: Save infra outputs
+        id: infra-outputs
+        run: |
+          echo "webappName=${{ steps.deploy-bicep.outputs.AZURE_WEBAPP_NAME }}" >> $GITHUB_OUTPUT
+
+      - name: Azure logout
+        if: always()
+        run: az logout
+
+  # ─── Deploy App ────────────────────────────────────────────────────────────
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build, infra]
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.infra.result == 'success' || needs.infra.result == 'skipped') &&
+      github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: prisma
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: ./deploy
+
+      - name: Login to Azure (OIDC Federated Credential)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get Web App name
+        id: webapp
+        run: |
+          # Use infra output if available, otherwise fall back to variable
+          WEBAPP_NAME="${{ needs.infra.outputs.webapp_name }}"
+          if [ -z "$WEBAPP_NAME" ]; then
+            WEBAPP_NAME="${{ vars.AZURE_WEBAPP_NAME }}"
+          fi
+          echo "name=$WEBAPP_NAME" >> $GITHUB_OUTPUT
+
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: .
+          app-name: ${{ steps.webapp.outputs.name }}
+          package: ./deploy
+
+      - name: Run Prisma Migrations
+        run: |
+          # Get the DATABASE_URL from App Service settings
+          DB_URL=$(az webapp config appsettings list \
+            --name ${{ steps.webapp.outputs.name }} \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP || 'rg-prod' }} \
+            --query "[?name=='DATABASE_URL'].value" -o tsv)
+          export DATABASE_URL="$DB_URL"
+          npm install prisma --no-save
+          npx prisma migrate deploy
 
       - name: Azure logout
         if: always()

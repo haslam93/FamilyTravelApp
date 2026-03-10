@@ -1,0 +1,30 @@
+# ─── Azure Developer CLI (azd) Configuration ────────────────────────────────
+# This file tells `azd` how to provision infrastructure and deploy the app.
+# Run `azd up` for a complete provision + deploy cycle.
+
+name: family-travel-app
+metadata:
+  template: family-travel-app
+
+infra:
+  provider: bicep
+  path: ./infra
+  module: main
+
+services:
+  web:
+    project: .
+    language: js
+    host: appservice
+    hooks:
+      prepackage:
+        shell: sh
+        run: |
+          npm ci
+          npx prisma generate
+          npm run build
+      postdeploy:
+        shell: sh
+        run: |
+          # Run Prisma migrations against the Azure database
+          npx prisma migrate deploy
