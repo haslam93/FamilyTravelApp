@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline — Family Travel Companion</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #f8fafc, #f0f9ff);
+      color: #334155;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    .emoji { font-size: 4rem; margin-bottom: 1rem; }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #FF6B6B, #38BDF8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+    p { color: #94a3b8; font-weight: 600; line-height: 1.5; }
+    .retry {
+      margin-top: 1.5rem;
+      display: inline-block;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(135deg, #FF6B6B, #FFA07A);
+      color: white;
+      border: none;
+      border-radius: 1rem;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(255, 107, 107, 0.25);
+    }
+    .retry:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="emoji">✈️</div>
+    <h1>You&rsquo;re Offline</h1>
+    <p>No worries — your travel plans are saved! Reconnect to the internet to see the latest updates.</p>
+    <a href="/" class="retry">Try Again</a>
+  </div>
+</body>
+</html>

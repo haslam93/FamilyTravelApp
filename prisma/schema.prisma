@@ -1,0 +1,303 @@
+// Prisma schema for the Family Travel Companion App
+// Uses Azure Database for PostgreSQL with Managed Identity
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Trip ────────────────────────────────────────────────────────────────────
+
+enum TripType {
+  SOLO
+  FAMILY
+}
+
+enum TripStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+}
+
+model Trip {
+  id          String     @id @default(cuid())
+  name        String
+  type        TripType
+  status      TripStatus @default(PLANNING)
+  startDate   DateTime
+  endDate     DateTime
+  cities      String[]   // e.g. ["Hyderabad", "Delhi"]
+  countries   String[]   // e.g. ["India"]
+  coverImage  String?    // URL to city hero image
+  description String?
+  travelers   Int        @default(1)
+  tripItId    String?    @unique // TripIt trip ID for sync
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  days      TripDay[]
+  documents Document[]
+  flights   Flight[]
+
+  @@map("trips")
+}
+
+// ─── TripDay ─────────────────────────────────────────────────────────────────
+
+model TripDay {
+  id       String   @id @default(cuid())
+  date     DateTime
+  dayNum   Int      // Day 1, Day 2, etc.
+  city     String
+  country  String
+  notes    String?
+  tripId   String
+
+  trip           Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  activities     Activity[]
+  places         Place[]
+  recommendations Recommendation[]
+
+  @@unique([tripId, date])
+  @@map("trip_days")
+}
+
+// ─── Activity ────────────────────────────────────────────────────────────────
+
+enum ActivityType {
+  FLIGHT
+  SIGHTSEEING
+  MEAL
+  HOTEL_CHECKIN
+  HOTEL_CHECKOUT
+  TRANSPORT
+  UMRAH
+  PRAYER
+  REST
+  SHOPPING
+  OTHER
+}
+
+enum ActivityStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  SKIPPED
+}
+
+model Activity {
+  id          String         @id @default(cuid())
+  name        String
+  type        ActivityType
+  status      ActivityStatus @default(PLANNED)
+  startTime   DateTime?
+  endTime     DateTime?
+  notes       String?
+  sortOrder   Int            @default(0)
+  tripDayId   String
+  flightId    String?        @unique
+  placeId     String?
+  tripItId    String?        @unique // TripIt object ID for sync
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  tripDay      TripDay       @relation(fields: [tripDayId], references: [id], onDelete: Cascade)
+  flight       Flight?       @relation(fields: [flightId], references: [id])
+  place        Place?        @relation(fields: [placeId], references: [id])
+  calendarSync CalendarSync?
+
+  @@map("activities")
+}
+
+// ─── Flight ──────────────────────────────────────────────────────────────────
+
+enum FlightStatus {
+  SCHEDULED
+  ON_TIME
+  DELAYED
+  BOARDING
+  IN_FLIGHT
+  LANDED
+  CANCELLED
+  DIVERTED
+  UNKNOWN
+}
+
+model Flight {
+  id                String       @id @default(cuid())
+  flightNumber      String       // e.g. "EK504"
+  airline           String       // e.g. "Emirates"
+  airlineCode       String?      // e.g. "EK"
+  airlineLogo       String?      // URL to airline logo
+  departureAirport  String       // IATA code e.g. "DXB"
+  departureCity     String
+  arrivalAirport    String       // IATA code e.g. "HYD"
+  arrivalCity       String
+  scheduledDeparture DateTime
+  scheduledArrival   DateTime
+  actualDeparture   DateTime?
+  actualArrival     DateTime?
+  status            FlightStatus @default(SCHEDULED)
+  terminal          String?
+  gate              String?
+  baggageBelt       String?
+  aircraft          String?      // e.g. "Boeing 777-300ER"
+  tripId            String
+  tripItId          String?      @unique
+  lastChecked       DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  trip     Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  activity Activity?
+
+  @@map("flights")
+}
+
+// ─── Place ───────────────────────────────────────────────────────────────────
+
+enum PlaceCategory {
+  EAT
+  VISIT
+  HOTEL
+  PRAY
+  SHOP
+  BEACH
+  MUSEUM
+  PARK
+  LANDMARK
+  OTHER
+}
+
+model Place {
+  id            String        @id @default(cuid())
+  name          String
+  category      PlaceCategory
+  address       String?
+  city          String
+  country       String
+  latitude      Float?
+  longitude     Float?
+  googlePlaceId String?       // Google Place ID for Maps/Photos
+  googleMapsUrl String?       // Direct Google Maps link
+  photoUrl      String?       // Cover photo URL (from Google Places or uploaded)
+  photoUrls     String[]      // Additional photos
+  rating        Float?        // Google rating
+  priceLevel    Int?          // 1-4 price scale
+  phone         String?
+  website       String?
+  notes         String?
+  kidFriendly   Boolean       @default(true)
+  visited       Boolean       @default(false)
+  visitedAt     DateTime?
+  tripDayId     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  tripDay    TripDay?   @relation(fields: [tripDayId], references: [id])
+  activities Activity[]
+
+  @@map("places")
+}
+
+// ─── Document ────────────────────────────────────────────────────────────────
+
+enum DocumentType {
+  PASSPORT
+  VISA
+  FLIGHT_BOOKING
+  HOTEL_BOOKING
+  INSURANCE
+  UMRAH_PERMIT
+  CAR_RENTAL
+  ITINERARY
+  OTHER
+}
+
+model Document {
+  id        String       @id @default(cuid())
+  name      String
+  type      DocumentType
+  fileUrl   String       // Azure Blob Storage URL
+  fileName  String       // Original file name
+  fileSize  Int?         // In bytes
+  mimeType  String?
+  tripId    String
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+// ─── Recommendation ─────────────────────────────────────────────────────────
+
+model Recommendation {
+  id            String        @id @default(cuid())
+  name          String
+  category      PlaceCategory
+  description   String?
+  googlePlaceId String?
+  googleMapsUrl String?
+  photoUrl      String?
+  rating        Float?
+  priceLevel    Int?
+  distance      Float?        // Distance from accommodation in meters
+  kidFriendly   Boolean       @default(true)
+  openNow       Boolean?
+  city          String
+  country       String
+  tripDayId     String?
+  addedToItinerary Boolean    @default(false)
+  createdAt     DateTime      @default(now())
+
+  tripDay TripDay? @relation(fields: [tripDayId], references: [id])
+
+  @@map("recommendations")
+}
+
+// ─── CalendarSync ────────────────────────────────────────────────────────────
+
+enum SyncStatus {
+  SYNCED
+  PENDING
+  CONFLICT
+  ERROR
+}
+
+model CalendarSync {
+  id              String     @id @default(cuid())
+  activityId      String     @unique
+  googleEventId   String     // Google Calendar Event ID
+  googleCalendarId String    // Which Google Calendar
+  syncStatus      SyncStatus @default(PENDING)
+  lastSyncedAt    DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@map("calendar_syncs")
+}
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+model Settings {
+  id                  String  @id @default("app-settings")
+  pinHash             String? // Hashed PIN for access protection
+  tripItAccessToken   String?
+  tripItAccessSecret  String?
+  googleRefreshToken  String? // Google OAuth refresh token
+  googleCalendarId    String? // Selected Google Calendar for sync
+  defaultTimezone     String  @default("UTC")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("settings")
+}
