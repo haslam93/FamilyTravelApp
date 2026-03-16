@@ -12,7 +12,10 @@
       "value": "rg-${AZURE_ENV_NAME}"
     },
     "postgresAdminPassword": {
-      "value": "$(secretOrRandomPassword)"
+      "value": "${AZURE_POSTGRES_PASSWORD}"
+    },
+    "appServiceName": {
+      "value": "${AZURE_APP_NAME}"
     }
   }
 }

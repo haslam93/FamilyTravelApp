@@ -6,6 +6,7 @@ param location string
 param environmentName string
 param resourceToken string
 param skuName string = 'B1'
+param customAppName string = ''
 param managedIdentityId string
 param managedIdentityClientId string
 
@@ -18,7 +19,7 @@ param storageContainerName string
 // ─── Resource Names ─────────────────────────────────────────────────────────
 
 var appServicePlanName = 'azasp${resourceToken}'
-var appServiceName = 'azapp${resourceToken}'
+var appServiceName = empty(customAppName) ? 'azapp${resourceToken}' : customAppName
 
 // ─── App Service Plan (Linux) ───────────────────────────────────────────────
 
@@ -93,8 +94,8 @@ resource appService 'Microsoft.Web/sites@2023-12-01' = {
           value: 'false'
         }
         {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: '1'
+          name: 'ENABLE_ORYX_BUILD'
+          value: 'false'
         }
       ]
     }

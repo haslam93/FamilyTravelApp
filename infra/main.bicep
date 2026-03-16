@@ -44,6 +44,9 @@ param postgresStorageSizeGB int = 32
 @description('App Service Plan SKU.')
 param appServiceSkuName string = 'B1'
 
+@description('Custom App Service name. If empty, auto-generated as azapp{token}.')
+param appServiceName string = ''
+
 // ─── Resource Token ─────────────────────────────────────────────────────────
 // Unique suffix for globally unique resource names.
 
@@ -113,6 +116,7 @@ module appService 'modules/appservice.bicep' = {
     environmentName: environmentName
     resourceToken: resourceToken
     skuName: appServiceSkuName
+    customAppName: appServiceName
     managedIdentityId: identity.outputs.identityId
     managedIdentityClientId: identity.outputs.clientId
     databaseUrl: postgres.outputs.connectionString

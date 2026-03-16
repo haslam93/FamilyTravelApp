@@ -16,15 +16,50 @@ services:
     project: .
     language: js
     host: appservice
+    dist: .next/standalone
     hooks:
       prepackage:
-        shell: sh
-        run: |
-          npm ci
-          npx prisma generate
-          npm run build
+        windows:
+          shell: pwsh
+          run: |
+            if (Test-Path .next) { Remove-Item -Force -Recurse .next -ErrorAction SilentlyContinue }
+            npm install --force
+            npx prisma generate
+            npm run build
+            Copy-Item -Recurse -Force .next\static .next\standalone\.next\static
+            Copy-Item -Recurse -Force public .next\standalone\public
+            Copy-Item -Recurse -Force prisma .next\standalone\prisma
+            Copy-Item -Recurse -Force node_modules\.prisma .next\standalone\node_modules\.prisma -ErrorAction SilentlyContinue
+            Copy-Item -Recurse -Force node_modules\@prisma .next\standalone\node_modules\@prisma -ErrorAction SilentlyContinue
+        posix:
+          shell: sh
+          run: |
+            rm -rf .next
+            npm ci
+            npx prisma generate
+            npm run build
+            cp -r .next/static .next/standalone/.next/static
+            cp -r public .next/standalone/public
+            cp -r prisma .next/standalone/prisma
+            cp -r node_modules/.prisma .next/standalone/node_modules/.prisma 2>/dev/null || true
+            cp -r node_modules/@prisma .next/standalone/node_modules/@prisma 2>/dev/null || true
       postdeploy:
-        shell: sh
-        run: |
-          # Run Prisma migrations against the Azure database
-          npx prisma migrate deploy
+        windows:
+          shell: pwsh
+          run: |
+            $rgName = azd env get-value AZURE_RESOURCE_GROUP 2>$null
+            if (-not $rgName) { $rgName = "rg-$(azd env get-value AZURE_ENV_NAME)" }
+            $appName = azd env get-value AZURE_WEBAPP_NAME 2>$null
+            if (-not $appName) {
+              $appName = az webapp list --resource-group $rgName --query "[0].name" -o tsv
+            }
+            $dbUrl = az webapp config appsettings list --name $appName --resource-group $rgName --query "[?name=='DATABASE_URL'].value" -o tsv
+            $env:DATABASE_URL = $dbUrl
+            npx prisma migrate deploy
+        posix:
+          shell: sh
+          run: |
+            RG_NAME=$(azd env get-value AZURE_RESOURCE_GROUP 2>/dev/null || echo "rg-$(azd env get-value AZURE_ENV_NAME)")
+            APP_NAME=$(azd env get-value AZURE_WEBAPP_NAME 2>/dev/null || az webapp list --resource-group "$RG_NAME" --query "[0].name" -o tsv)
+            DB_URL=$(az webapp config appsettings list --name "$APP_NAME" --resource-group "$RG_NAME" --query "[?name=='DATABASE_URL'].value" -o tsv)
+            DATABASE_URL="$DB_URL" npx prisma migrate deploy
