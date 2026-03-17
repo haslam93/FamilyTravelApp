@@ -35,6 +35,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -117,6 +119,11 @@ jobs:
 
           BEFORE_SHA="${{ github.event.before }}"
           if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -268,30 +275,54 @@ jobs:
 
       - name: Ensure managed identity database principal exists
         run: |
-          PG_TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
-          export PGPASSWORD="$PG_TOKEN"
-          psql "host=${{ steps.postgres.outputs.host }} port=5432 dbname=postgres user=${{ steps.postgres.outputs.admin_name }} sslmode=require" <<'SQL'
-          DO $$
-          BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${{ steps.postgres.outputs.managed_identity_name }}') THEN
-              PERFORM * FROM pgaadauth_create_principal('${{ steps.postgres.outputs.managed_identity_name }}', false, false);
-            END IF;
-          END
-          $$;
-          SQL
+          for attempt in {1..10}; do
+            PG_TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
+            export PGPASSWORD="$PG_TOKEN"
+
+            if psql "host=${{ steps.postgres.outputs.host }} port=5432 dbname=postgres user=${{ steps.postgres.outputs.admin_name }} sslmode=require" <<'SQL'
+            DO $$
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${{ steps.postgres.outputs.managed_identity_name }}') THEN
+                PERFORM * FROM pgaadauth_create_principal('${{ steps.postgres.outputs.managed_identity_name }}', false, false);
+              END IF;
+            END
+            $$;
+            SQL
+            then
+              exit 0
+            fi
+
+            echo "Managed identity principal creation attempt $attempt failed; waiting for Microsoft Entra admin propagation."
+            sleep 15
+          done
+
+          echo "Unable to connect as the PostgreSQL Entra admin after waiting for propagation."
+          exit 1
 
       - name: Grant app database permissions to managed identity
         run: |
-          PG_TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
-          export PGPASSWORD="$PG_TOKEN"
-          psql "host=${{ steps.postgres.outputs.host }} port=5432 dbname=${{ steps.postgres.outputs.database }} user=${{ steps.postgres.outputs.admin_name }} sslmode=require" <<'SQL'
-          GRANT CONNECT ON DATABASE "${{ steps.postgres.outputs.database }}" TO "${{ steps.postgres.outputs.managed_identity_name }}";
-          GRANT USAGE ON SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
-          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
-          GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${{ steps.postgres.outputs.managed_identity_name }}";
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO "${{ steps.postgres.outputs.managed_identity_name }}";
-          SQL
+          for attempt in {1..10}; do
+            PG_TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
+            export PGPASSWORD="$PG_TOKEN"
+
+            if psql "host=${{ steps.postgres.outputs.host }} port=5432 dbname=${{ steps.postgres.outputs.database }} user=${{ steps.postgres.outputs.admin_name }} sslmode=require" <<'SQL'
+            GRANT CONNECT ON DATABASE "${{ steps.postgres.outputs.database }}" TO "${{ steps.postgres.outputs.managed_identity_name }}";
+            GRANT USAGE ON SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+            GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+            GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${{ steps.postgres.outputs.managed_identity_name }}";
+            ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO "${{ steps.postgres.outputs.managed_identity_name }}";
+            SQL
+            then
+              exit 0
+            fi
+
+            echo "Permission grant attempt $attempt failed; waiting for Microsoft Entra admin propagation."
+            sleep 15
+          done
+
+          echo "Unable to grant managed identity permissions after waiting for Microsoft Entra admin propagation."
+          exit 1
 
       # Deploy the zip directly — Oryx is disabled in Bicep app settings
       - name: Deploy to Azure App Service
