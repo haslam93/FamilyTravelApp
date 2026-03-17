@@ -2,7 +2,6 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FileText,
   Upload,
   Search,
   Download,
@@ -86,7 +85,7 @@ function DocModal({
   onSave: (d: Doc) => void;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<Doc>(
+  const [form, setForm] = useState<Doc>(() =>
     doc || {
       id: `doc-${Date.now()}`,
       name: "",

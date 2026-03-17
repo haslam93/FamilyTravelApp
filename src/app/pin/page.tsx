@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
-import { Lock, Plane, ArrowRight } from "lucide-react";
+import { Plane, ArrowRight } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function PinForm() {

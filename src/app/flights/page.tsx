@@ -4,8 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plane,
   RefreshCw,
-  Clock,
-  MapPin,
   Calendar,
   Plus,
   Edit3,
@@ -84,7 +82,7 @@ function FlightModal({
   onSave: (f: Flight) => void;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<Flight>(
+  const [form, setForm] = useState<Flight>(() =>
     flight || {
       id: `fl-${Date.now()}`,
       flightNumber: "",

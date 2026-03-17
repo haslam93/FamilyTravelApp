@@ -18,6 +18,19 @@ const KID_FRIENDLY_TYPES = [
   "bakery",
 ];
 
+interface GooglePlace {
+  place_id: string;
+  name: string;
+  vicinity?: string;
+  rating?: number;
+  user_ratings_total?: number;
+  types?: string[];
+  photos?: { photo_reference: string }[];
+  geometry: { location: { lat: number; lng: number } };
+  opening_hours?: { open_now?: boolean };
+  price_level?: number;
+}
+
 interface PlaceResult {
   id: string;
   name: string;
@@ -76,7 +89,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let places: PlaceResult[] = (data.results || []).map((place: any) => ({
+    let places: PlaceResult[] = (data.results || []).map((place: GooglePlace) => ({
       id: place.place_id,
       name: place.name,
       vicinity: place.vicinity || "",

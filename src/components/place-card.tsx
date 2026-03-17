@@ -34,6 +34,15 @@ export function PlaceCard({
   onToggleVisited,
 }: PlaceCardProps) {
   const [showConfetti, setShowConfetti] = useState(false);
+  const [confettiPieces] = useState(() =>
+    ["🎉", "⭐", "🎊", "✨", "🌟", "💫"].map((emoji, index) => ({
+      emoji,
+      index,
+      x: (index - 2.5) * 40,
+      yPeak: -60 - Math.random() * 40,
+      rotate: Math.random() * 360,
+    }))
+  );
   const emoji = PLACE_CATEGORY_EMOJI[category] || "📍";
 
   const handleVisitToggle = () => {
@@ -58,20 +67,20 @@ export function PlaceCard({
       {/* Confetti burst on visit */}
       {showConfetti && (
         <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
-          {["🎉", "⭐", "🎊", "✨", "🌟", "💫"].map((e, i) => (
+          {confettiPieces.map((piece) => (
             <motion.span
-              key={i}
+              key={piece.index}
               initial={{ scale: 0, x: 0, y: 0 }}
               animate={{
                 scale: [0, 1.5, 0],
-                x: (i - 2.5) * 40,
-                y: [0, -60 - Math.random() * 40, 20],
-                rotate: Math.random() * 360,
+                x: piece.x,
+                y: [0, piece.yPeak, 20],
+                rotate: piece.rotate,
               }}
-              transition={{ duration: 0.8, delay: i * 0.05 }}
+              transition={{ duration: 0.8, delay: piece.index * 0.05 }}
               className="absolute text-2xl"
             >
-              {e}
+              {piece.emoji}
             </motion.span>
           ))}
         </div>

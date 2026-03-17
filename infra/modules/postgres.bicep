@@ -9,6 +9,9 @@ param databaseName string
 param skuName string
 param skuTier string
 param storageSizeGB int
+param entraAdminPrincipalName string
+param entraAdminPrincipalType string = 'ServicePrincipal'
+param tenantId string = subscription().tenantId
 
 @secure()
 param administratorPassword string
@@ -47,6 +50,16 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-pr
   }
 }
 
+resource postgresEntraAdmin 'Microsoft.DBforPostgreSQL/flexibleServers/administrators@2023-12-01-preview' = {
+  parent: postgresServer
+  name: 'activeDirectory'
+  properties: {
+    principalName: entraAdminPrincipalName
+    principalType: entraAdminPrincipalType
+    tenantId: tenantId
+  }
+}
+
 // Allow Azure services to connect (required for App Service)
 resource firewallAllowAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-12-01-preview' = {
   parent: postgresServer
@@ -70,4 +83,4 @@ resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-12-0
 output serverName string = postgresServer.name
 output serverFqdn string = postgresServer.properties.fullyQualifiedDomainName
 output databaseName string = database.name
-output connectionString string = 'postgresql://${administratorLogin}:${administratorPassword}@${postgresServer.properties.fullyQualifiedDomainName}:5432/${databaseName}?schema=public&sslmode=require'
+output administratorLogin string = administratorLogin

@@ -9,9 +9,9 @@ param skuName string = 'B1'
 param customAppName string = ''
 param managedIdentityId string
 param managedIdentityClientId string
-
-@secure()
-param databaseUrl string
+param managedIdentityName string
+param postgresHost string
+param postgresDatabaseName string
 
 param storageAccountName string
 param storageContainerName string
@@ -66,10 +66,6 @@ resource appService 'Microsoft.Web/sites@2023-12-01' = {
       appCommandLine: 'node server.js'
       appSettings: [
         {
-          name: 'DATABASE_URL'
-          value: databaseUrl
-        }
-        {
           name: 'AZURE_STORAGE_ACCOUNT_NAME'
           value: storageAccountName
         }
@@ -80,6 +76,26 @@ resource appService 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'AZURE_CLIENT_ID'
           value: managedIdentityClientId
+        }
+        {
+          name: 'AZURE_POSTGRES_USE_MANAGED_IDENTITY'
+          value: 'true'
+        }
+        {
+          name: 'AZURE_POSTGRES_HOST'
+          value: postgresHost
+        }
+        {
+          name: 'AZURE_POSTGRES_DATABASE'
+          value: postgresDatabaseName
+        }
+        {
+          name: 'AZURE_POSTGRES_PRINCIPAL_NAME'
+          value: managedIdentityName
+        }
+        {
+          name: 'AZURE_POSTGRES_SCHEMA'
+          value: 'public'
         }
         {
           name: 'NODE_ENV'

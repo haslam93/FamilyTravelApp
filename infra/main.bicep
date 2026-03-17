@@ -47,6 +47,13 @@ param appServiceSkuName string = 'B1'
 @description('Custom App Service name. If empty, auto-generated as azapp{token}.')
 param appServiceName string = ''
 
+@description('Microsoft Entra principal name to assign as PostgreSQL server admin for automation.')
+param postgresEntraAdminPrincipalName string
+
+@description('Microsoft Entra principal type for the PostgreSQL server admin.')
+@allowed(['User', 'Group', 'ServicePrincipal'])
+param postgresEntraAdminPrincipalType string = 'ServicePrincipal'
+
 // ─── Resource Token ─────────────────────────────────────────────────────────
 // Unique suffix for globally unique resource names.
 
@@ -90,6 +97,9 @@ module postgres 'modules/postgres.bicep' = {
     skuName: postgresSkuName
     skuTier: postgresSkuTier
     storageSizeGB: postgresStorageSizeGB
+    entraAdminPrincipalName: postgresEntraAdminPrincipalName
+    entraAdminPrincipalType: postgresEntraAdminPrincipalType
+    tenantId: subscription().tenantId
   }
 }
 
@@ -119,7 +129,9 @@ module appService 'modules/appservice.bicep' = {
     customAppName: appServiceName
     managedIdentityId: identity.outputs.identityId
     managedIdentityClientId: identity.outputs.clientId
-    databaseUrl: postgres.outputs.connectionString
+    managedIdentityName: identity.outputs.identityName
+    postgresHost: postgres.outputs.serverFqdn
+    postgresDatabaseName: postgres.outputs.databaseName
     storageAccountName: storage.outputs.storageAccountName
     storageContainerName: storage.outputs.containerName
   }
@@ -132,5 +144,8 @@ output AZURE_RESOURCE_GROUP string = rg.name
 output AZURE_WEBAPP_NAME string = appService.outputs.appServiceName
 output AZURE_WEBAPP_URL string = appService.outputs.appServiceUrl
 output AZURE_POSTGRES_HOST string = postgres.outputs.serverFqdn
+output AZURE_POSTGRES_DATABASE string = postgres.outputs.databaseName
+output AZURE_POSTGRES_ADMIN_LOGIN string = postgres.outputs.administratorLogin
 output AZURE_STORAGE_ACCOUNT string = storage.outputs.storageAccountName
 output AZURE_MANAGED_IDENTITY_CLIENT_ID string = identity.outputs.clientId
+output AZURE_MANAGED_IDENTITY_NAME string = identity.outputs.identityName

@@ -1,7 +1,7 @@
 # ─── Family Travel Companion App ─ CI/CD Pipeline ────────────────────────────
-# Builds standalone Next.js output, provisions Azure infrastructure (Bicep),
-# and deploys via `az webapp deploy` with zip packaging.
-# Uses OIDC federated credentials — no stored secrets except DB password.
+# Builds standalone Next.js output, previews Bicep on every deploy, applies
+# infra only when infra files changed or manually requested, then deploys app.
+# Uses OIDC federated credentials and managed identity for app-to-database auth.
 
 name: Build and Deploy
 
@@ -68,7 +68,7 @@ jobs:
       - name: Create deployment zip
         run: |
           cd .next/standalone
-          tar -cf ../../deploy.zip --format=zip .
+          zip -qr ../../deploy.zip .
           cd ../..
 
       - name: Upload deployment artifact
@@ -82,8 +82,7 @@ jobs:
   infra:
     runs-on: ubuntu-latest
     if: |
-      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true')
+      github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     environment: production
     outputs:
       webapp_name: ${{ steps.infra-outputs.outputs.webapp_name }}
@@ -100,8 +99,48 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Resolve PostgreSQL Entra admin principal
+        id: entra-admin
+        run: |
+          ADMIN_NAME=$(az ad sp show --id ${{ vars.AZURE_CLIENT_ID }} --query displayName -o tsv)
+          echo "name=$ADMIN_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Detect infrastructure changes
+        id: infra-changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.deploy_infra }}" = "true" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BEFORE_SHA="${{ github.event.before }}"
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --name-only "$BEFORE_SHA" "${{ github.sha }}" | grep -Eq '^(infra/|azure.yaml|\.github/workflows/deploy\.yml)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Preview Azure Infrastructure (what-if)
+        run: |
+          az deployment sub what-if \
+            --location ${{ vars.AZURE_LOCATION }} \
+            --template-file infra/main.bicep \
+            --parameters \
+              environmentName=${{ vars.AZURE_ENV_NAME || 'familytravelapp' }} \
+              location=${{ vars.AZURE_LOCATION }} \
+              resourceGroupName=${{ vars.AZURE_RESOURCE_GROUP }} \
+              postgresAdminPassword=${{ secrets.POSTGRES_ADMIN_PASSWORD }} \
+              appServiceName=${{ vars.AZURE_WEBAPP_NAME }} \
+              postgresEntraAdminPrincipalName='${{ steps.entra-admin.outputs.name }}'
+
       - name: Deploy Azure Infrastructure (Bicep)
         id: deploy-bicep
+        if: steps.infra-changes.outputs.changed == 'true'
         uses: azure/arm-deploy@v2
         with:
           scope: subscription
@@ -113,13 +152,19 @@ jobs:
             resourceGroupName=${{ vars.AZURE_RESOURCE_GROUP }}
             postgresAdminPassword=${{ secrets.POSTGRES_ADMIN_PASSWORD }}
             appServiceName=${{ vars.AZURE_WEBAPP_NAME }}
+            postgresEntraAdminPrincipalName='${{ steps.entra-admin.outputs.name }}'
           deploymentName: family-travel-${{ github.run_number }}
 
       - name: Save infra outputs
         id: infra-outputs
         run: |
-          echo "webapp_name=${{ steps.deploy-bicep.outputs.AZURE_WEBAPP_NAME }}" >> "$GITHUB_OUTPUT"
-          echo "resource_group=${{ steps.deploy-bicep.outputs.AZURE_RESOURCE_GROUP }}" >> "$GITHUB_OUTPUT"
+          if [ "${{ steps.infra-changes.outputs.changed }}" = "true" ]; then
+            echo "webapp_name=${{ steps.deploy-bicep.outputs.AZURE_WEBAPP_NAME }}" >> "$GITHUB_OUTPUT"
+            echo "resource_group=${{ steps.deploy-bicep.outputs.AZURE_RESOURCE_GROUP }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "webapp_name=${{ vars.AZURE_WEBAPP_NAME }}" >> "$GITHUB_OUTPUT"
+            echo "resource_group=${{ vars.AZURE_RESOURCE_GROUP }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Azure logout
         if: always()
@@ -164,6 +209,35 @@ jobs:
           echo "name=$WEBAPP_NAME" >> "$GITHUB_OUTPUT"
           echo "rg=$RG_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve PostgreSQL and managed identity metadata
+        id: postgres
+        run: |
+          PG_NAME=$(az postgres flexible-server list \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
+            --query "[0].name" -o tsv)
+          PG_HOST=$(az postgres flexible-server show \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
+            --name "$PG_NAME" \
+            --query "fullyQualifiedDomainName" -o tsv)
+          PG_ADMIN=$(az postgres flexible-server show \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
+            --name "$PG_NAME" \
+            --query "administratorLogin" -o tsv)
+          PG_DB=$(az postgres flexible-server db list \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
+            --server-name "$PG_NAME" \
+            --query "[?name!='postgres'] | [0].name" -o tsv)
+          MI_NAME=$(az identity list \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
+            --query "[0].name" -o tsv)
+          ADMIN_NAME=$(az ad sp show --id ${{ vars.AZURE_CLIENT_ID }} --query displayName -o tsv)
+          echo "server=$PG_NAME" >> "$GITHUB_OUTPUT"
+          echo "host=$PG_HOST" >> "$GITHUB_OUTPUT"
+          echo "admin_login=$PG_ADMIN" >> "$GITHUB_OUTPUT"
+          echo "database=$PG_DB" >> "$GITHUB_OUTPUT"
+          echo "managed_identity_name=$MI_NAME" >> "$GITHUB_OUTPUT"
+          echo "admin_name=$ADMIN_NAME" >> "$GITHUB_OUTPUT"
+
       # Ensure the PostgreSQL server is running before deploying
       - name: Start PostgreSQL server (if stopped)
         run: |
@@ -184,6 +258,36 @@ jobs:
               echo "PostgreSQL server $PG_NAME is already running."
             fi
           fi
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Ensure managed identity database principal exists
+        run: |
+          PG_TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
+          export PGPASSWORD="$PG_TOKEN"
+          psql "host=${{ steps.postgres.outputs.host }} port=5432 dbname=postgres user=${{ steps.postgres.outputs.admin_name }} sslmode=require" <<'SQL'
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${{ steps.postgres.outputs.managed_identity_name }}') THEN
+              PERFORM * FROM pgaadauth_create_principal('${{ steps.postgres.outputs.managed_identity_name }}', false, false);
+            END IF;
+          END
+          $$;
+          SQL
+
+      - name: Grant app database permissions to managed identity
+        run: |
+          PG_TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
+          export PGPASSWORD="$PG_TOKEN"
+          psql "host=${{ steps.postgres.outputs.host }} port=5432 dbname=${{ steps.postgres.outputs.database }} user=${{ steps.postgres.outputs.admin_name }} sslmode=require" <<'SQL'
+          GRANT CONNECT ON DATABASE "${{ steps.postgres.outputs.database }}" TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          GRANT USAGE ON SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          SQL
 
       # Deploy the zip directly — Oryx is disabled in Bicep app settings
       - name: Deploy to Azure App Service
@@ -211,12 +315,7 @@ jobs:
 
       - name: Run Prisma Migrations
         run: |
-          # Fetch DATABASE_URL from App Service settings
-          DB_URL=$(az webapp config appsettings list \
-            --name ${{ steps.webapp.outputs.name }} \
-            --resource-group ${{ steps.webapp.outputs.rg }} \
-            --query "[?name=='DATABASE_URL'].value" -o tsv)
-          export DATABASE_URL="$DB_URL"
+          export DATABASE_URL="postgresql://${{ steps.postgres.outputs.admin_login }}:${{ secrets.POSTGRES_ADMIN_PASSWORD }}@${{ steps.postgres.outputs.host }}:5432/${{ steps.postgres.outputs.database }}?schema=public&sslmode=require"
           npm install prisma@latest --no-save
           npx prisma migrate deploy
 

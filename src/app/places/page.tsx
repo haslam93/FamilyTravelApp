@@ -74,7 +74,7 @@ function PlaceModal({
   onSave: (p: Place) => void;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<Place>(
+  const [form, setForm] = useState<Place>(() =>
     place || {
       id: `pl-${Date.now()}`,
       name: "",

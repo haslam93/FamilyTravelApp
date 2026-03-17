@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CalendarDays, ChevronRight, MapPin, Clock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CITY_IMAGES, TRIP_VISUALS, ACTIVITY_TYPE_EMOJI } from "@/lib/constants";
 
@@ -55,6 +56,8 @@ const itemVariants = {
 };
 
 export default function ItineraryPage() {
+  const [currentTime] = useState(() => Date.now());
+
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -73,7 +76,7 @@ export default function ItineraryPage() {
           {TRIPS_OVERVIEW.map((trip) => {
             const visuals = TRIP_VISUALS[trip.type];
             const daysUntil = Math.ceil(
-              (new Date(trip.startDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+              (new Date(trip.startDate).getTime() - currentTime) / (1000 * 60 * 60 * 24)
             );
 
             return (

@@ -25,7 +25,6 @@ The app features a vibrant, kid-friendly UI with large touch targets, playful an
 * **Umrah guide** with step-by-step checklist, du'as, and holy places reference
 * **Prayer times** via Aladhan API with current/next prayer tracking
 * **Google Calendar sync** — bi-directional push/pull for itinerary events
-* **TripIt integration** — OAuth 1.0a sync to import existing travel plans
 * **PIN-based access** — simple PIN gate (no user accounts)
 * **PWA** — installable with offline support via service worker
 
@@ -38,7 +37,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full architecture diagram and com
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js 16 (App Router), TypeScript, Tailwind CSS, shadcn/ui, Framer Motion |
-| Database | PostgreSQL 16 via Prisma ORM (9 models) |
+| Database | Azure Database for PostgreSQL 16 via Prisma ORM and managed identity |
 | Storage | Azure Blob Storage (Managed Identity) |
 | Hosting | Azure App Service (Linux, Node 20) |
 | IaC | Bicep (subscription-scoped, 4 modules) |
@@ -49,7 +48,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full architecture diagram and com
 
 | API | Purpose |
 |---|---|
-| TripIt (OAuth 1.0a) | Import existing itineraries |
 | AirLabs | Real-time flight status and tracking |
 | Google Calendar (OAuth 2.0) | Bi-directional itinerary sync |
 | Google Maps / Places | Maps, place search, nearby recommendations |
@@ -139,11 +137,12 @@ See [DEPLOY.md](DEPLOY.md) for complete deployment instructions, OIDC setup for 
 Every push to `main` triggers the GitHub Actions pipeline which:
 
 1. Builds and lints the Next.js app
-2. Provisions Azure infrastructure via Bicep (subscription-scoped)
-3. Packages standalone output into a zip via `tar`
+2. Runs Azure Bicep `what-if` and only applies infra if infrastructure files changed or a manual deploy requests it
+3. Packages standalone output into a real zip artifact
 4. Deploys to App Service via `az webapp deploy --type zip`
 5. Verifies deployment with a health check
-6. Runs Prisma migrations against the production database
+6. Ensures the App Service managed identity has PostgreSQL access
+7. Runs Prisma migrations against the production database
 
 Manual infrastructure deployments can be triggered via `workflow_dispatch` in the Actions tab.
 

@@ -5,13 +5,10 @@ import {
   CalendarDays,
   MapPin,
   Plane,
-  FileText,
   ChevronLeft,
   ChevronRight,
   Plus,
-  Clock,
   Users,
-  Star,
   Edit3,
   Trash2,
   Save,
@@ -20,13 +17,12 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { AppShell } from "@/components/app-shell";
 import { SortableActivityList } from "@/components/sortable-activity-list";
 import { AddActivityModal } from "@/components/add-activity-modal";
 import {
   CITY_IMAGES,
-  ACTIVITY_TYPE_EMOJI,
   TRIP_VISUALS,
 } from "@/lib/constants";
 
@@ -217,7 +213,7 @@ function EditFlightModal({
   onSave: (f: FlightData) => void;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<FlightData>(
+  const [form, setForm] = useState<FlightData>(() =>
     flight || {
       id: `fl-${Date.now()}`,
       flightNumber: "",
@@ -445,18 +441,13 @@ function EditTripModal({
 export default function TripDetailPage() {
   const params = useParams();
   const tripId = params.id as string;
-  const [trip, setTrip] = useState<TripData | null>(null);
+  const [trip, setTrip] = useState<TripData | null>(() => DEMO_TRIPS[tripId] ?? null);
   const [selectedDay, setSelectedDay] = useState(0);
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [showEditTrip, setShowEditTrip] = useState(false);
   const [showEditFlight, setShowEditFlight] = useState(false);
   const [editingFlight, setEditingFlight] = useState<FlightData | null>(null);
   const [activeTab, setActiveTab] = useState<"schedule" | "places" | "flights" | "docs">("schedule");
-
-  useEffect(() => {
-    const data = DEMO_TRIPS[tripId];
-    if (data) setTrip(data);
-  }, [tripId]);
 
   const handleAddActivity = useCallback((activity: Omit<Activity, "id" | "sortOrder">) => {
     if (!trip) return;
@@ -500,18 +491,6 @@ export default function TripDetailPage() {
 
   const handleUpdateTrip = (updates: Partial<TripData>) => {
     setTrip((prev) => prev ? { ...prev, ...updates } : prev);
-  };
-
-  const handleDeleteActivity = (activityId: string) => {
-    setTrip((prev) => {
-      if (!prev) return prev;
-      const days = [...prev.days];
-      days[selectedDay] = {
-        ...days[selectedDay],
-        activities: days[selectedDay].activities.filter((a) => a.id !== activityId),
-      };
-      return { ...prev, days };
-    });
   };
 
   if (!trip) {

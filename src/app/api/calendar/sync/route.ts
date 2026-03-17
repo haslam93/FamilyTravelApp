@@ -7,7 +7,6 @@ import { prisma } from "@/lib/db";
 import {
   createCalendarEvent,
   updateCalendarEvent,
-  deleteCalendarEvent,
   listCalendarEvents,
 } from "@/lib/google-calendar";
 
@@ -290,7 +289,7 @@ async function pullFromCalendar(
       -1
     );
 
-    const newActivity = await prisma.activity.create({
+    await prisma.activity.create({
       data: {
         tripDayId: matchingDay.id,
         name: event.summary || "Untitled Event",

@@ -120,6 +120,7 @@ ms.date: 2026-03-09
 - [x] Rewrite CI/CD workflow to use `az webapp deploy --type zip` instead of `azure/webapps-deploy`
 - [x] Add PostgreSQL auto-start check to CI/CD pipeline
 - [x] Add deployment health-check verification step
+- [x] Stabilize GitHub Actions pipeline (lint cleanup, packaging fix, OIDC deploy)
 - [x] Update all documentation (README, DEPLOY, ARCHITECTURE, progress)
 
 ## Phase 14 — UI Rethink and Full CRUD
@@ -148,3 +149,5 @@ ms.date: 2026-03-09
 > **Session 3 (fixes)**: Fixed 3 broken Unsplash image URLs (Hyderabad photo-1572638075568 → photo-1599661046289, Cairo photo-1539768942893 → photo-1553913861, Makkah photo-1591604129939 → photo-1580418827493). Rewrote CI/CD workflow: replaced `azure/webapps-deploy@v3` with `az webapp deploy --type zip`, added PostgreSQL auto-start, deployment health-check, and proper zip packaging via tar. Updated all documentation.
 >
 > **Session 4 (UI rethink + CRUD)**: Removed TripIt integration entirely (API shut down per help.tripit.com). Fixed Google Calendar OAuth — settings page was redirecting to callback URL instead of Google consent screen; created new `/api/auth/google/start` route. Full UI redesign across all pages: dashboard with floating emojis, gradient hero card, animated family avatars, 6 quick action buttons; trip detail page with Edit Trip modal (name, dates, travelers, cities), Edit Flight modal (full flight form), inline add/edit/delete for flights; flights page with full CRUD modals; places page with Add/Edit/Delete modals and kid-friendly toggle; documents page with Add/Edit modal. Fixed trailing code in trip page, TypeScript `type: "spring"` narrowing issues. Build compiles cleanly.
+>
+> **Session 5 (deployment hardening)**: Stabilized GitHub Actions by fixing lint blockers, switching artifact packaging from invalid tar-based zip generation to a real zip, and updating Bicep to preview on every deploy while only applying infra when infra files change. Reworked Azure PostgreSQL access to use App Service managed identity with Microsoft Entra authentication, added PostgreSQL principal/permission setup in the deploy workflow, updated runtime Prisma connection handling for token refresh, and refreshed README and environment documentation.

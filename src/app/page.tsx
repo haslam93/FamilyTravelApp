@@ -1,10 +1,10 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Plane, MapPin, Calendar, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { Plane, MapPin, Calendar, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+
 import { AppShell } from "@/components/app-shell";
 import { TripCard } from "@/components/trip-card";
 import { FlightBanner } from "@/components/flight-banner";
@@ -95,8 +95,6 @@ const scaleIn = {
 };
 
 export default function DashboardPage() {
-  const [showWelcome, setShowWelcome] = useState(true);
-
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 relative overflow-hidden">
