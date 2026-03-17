@@ -10,6 +10,7 @@ param skuName string
 param skuTier string
 param storageSizeGB int
 param entraAdminPrincipalName string
+param entraAdminPrincipalObjectId string
 param entraAdminPrincipalType string = 'ServicePrincipal'
 param tenantId string = subscription().tenantId
 
@@ -52,7 +53,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-pr
 
 resource postgresEntraAdmin 'Microsoft.DBforPostgreSQL/flexibleServers/administrators@2023-12-01-preview' = {
   parent: postgresServer
-  name: 'activeDirectory'
+  name: entraAdminPrincipalObjectId
   properties: {
     principalName: entraAdminPrincipalName
     principalType: entraAdminPrincipalType

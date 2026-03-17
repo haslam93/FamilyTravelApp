@@ -50,6 +50,9 @@ param appServiceName string = ''
 @description('Microsoft Entra principal name to assign as PostgreSQL server admin for automation.')
 param postgresEntraAdminPrincipalName string
 
+@description('Microsoft Entra principal object ID to assign as PostgreSQL server admin for automation.')
+param postgresEntraAdminPrincipalObjectId string
+
 @description('Microsoft Entra principal type for the PostgreSQL server admin.')
 @allowed(['User', 'Group', 'ServicePrincipal'])
 param postgresEntraAdminPrincipalType string = 'ServicePrincipal'
@@ -98,6 +101,7 @@ module postgres 'modules/postgres.bicep' = {
     skuTier: postgresSkuTier
     storageSizeGB: postgresStorageSizeGB
     entraAdminPrincipalName: postgresEntraAdminPrincipalName
+    entraAdminPrincipalObjectId: postgresEntraAdminPrincipalObjectId
     entraAdminPrincipalType: postgresEntraAdminPrincipalType
     tenantId: subscription().tenantId
   }
