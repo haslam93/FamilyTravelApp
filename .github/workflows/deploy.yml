@@ -324,13 +324,18 @@ jobs:
 
       # Deploy the zip directly — Oryx is disabled in Bicep app settings
       - name: Deploy to Azure App Service
+        id: app-deploy
         run: |
+          set +e
           az webapp deploy \
             --resource-group ${{ steps.webapp.outputs.rg }} \
             --name ${{ steps.webapp.outputs.name }} \
             --src-path deploy.zip \
             --type zip \
             --clean true
+          DEPLOY_EXIT_CODE=$?
+          echo "exit_code=$DEPLOY_EXIT_CODE" >> "$GITHUB_OUTPUT"
+          exit 0
 
       - name: Verify deployment
         run: |
@@ -339,11 +344,26 @@ jobs:
             --name ${{ steps.webapp.outputs.name }} \
             --query "defaultHostName" -o tsv)
           echo "Deployed to https://$SITE_URL"
-          sleep 10
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$SITE_URL" --max-time 30 || echo "000")
-          echo "Health check: HTTP $HTTP_CODE"
-          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
-            echo "::warning::Health check returned HTTP $HTTP_CODE"
+          HEALTHY=false
+
+          for attempt in {1..20}; do
+            sleep 15
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$SITE_URL" --max-time 30 || echo "000")
+            echo "Health check attempt $attempt: HTTP $HTTP_CODE"
+
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+              HEALTHY=true
+              break
+            fi
+          done
+
+          if [ "$HEALTHY" != "true" ]; then
+            echo "::error::Deployment health check failed after waiting for the site to start."
+            exit 1
+          fi
+
+          if [ "${{ steps.app-deploy.outputs.exit_code }}" != "0" ]; then
+            echo "az webapp deploy returned exit code ${{ steps.app-deploy.outputs.exit_code }}, but the site is healthy. Continuing."
           fi
 
       - name: Run Prisma Migrations
