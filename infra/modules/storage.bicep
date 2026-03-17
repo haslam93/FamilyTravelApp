@@ -7,6 +7,7 @@ param location string
 param environmentName string
 param resourceToken string
 param managedIdentityPrincipalId string
+param assignManagedIdentityBlobRole bool = false
 
 var storageAccountName = 'azst${resourceToken}'
 var containerName = 'documents'
@@ -52,7 +53,7 @@ resource documentsContainer 'Microsoft.Storage/storageAccounts/blobServices/cont
 }
 
 // Assign Storage Blob Data Contributor role to the managed identity
-resource storageBlobRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource storageBlobRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (assignManagedIdentityBlobRole) {
   name: guid(storageAccount.id, managedIdentityPrincipalId, storageBlobDataContributorRoleId)
   scope: storageAccount
   properties: {

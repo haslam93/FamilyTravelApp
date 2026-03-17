@@ -146,6 +146,8 @@ Every push to `main` triggers the GitHub Actions pipeline which:
 
 Manual infrastructure deployments can be triggered via `workflow_dispatch` in the Actions tab.
 
+One-time prerequisite: in the Azure portal, add the GitHub OIDC service principal as a Microsoft Entra admin on the PostgreSQL Flexible Server so the deploy job can create the app's managed-identity database principal.
+
 ## Live Site
 
 The app is deployed at [https://hammadtravel.azurewebsites.net](https://hammadtravel.azurewebsites.net).

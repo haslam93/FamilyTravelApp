@@ -101,14 +101,6 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Resolve PostgreSQL Entra admin principal
-        id: entra-admin
-        run: |
-          ADMIN_NAME=$(az ad sp show --id ${{ vars.AZURE_CLIENT_ID }} --query displayName -o tsv)
-          ADMIN_OBJECT_ID=$(az ad sp show --id ${{ vars.AZURE_CLIENT_ID }} --query id -o tsv)
-          echo "name=$ADMIN_NAME" >> "$GITHUB_OUTPUT"
-          echo "object_id=$ADMIN_OBJECT_ID" >> "$GITHUB_OUTPUT"
-
       - name: Detect infrastructure changes
         id: infra-changes
         run: |
@@ -144,9 +136,7 @@ jobs:
               location=${{ vars.AZURE_LOCATION }} \
               resourceGroupName=${{ vars.AZURE_RESOURCE_GROUP }} \
               postgresAdminPassword=${{ secrets.POSTGRES_ADMIN_PASSWORD }} \
-              appServiceName=${{ vars.AZURE_WEBAPP_NAME }} \
-              postgresEntraAdminPrincipalName='${{ steps.entra-admin.outputs.name }}' \
-              postgresEntraAdminPrincipalObjectId=${{ steps.entra-admin.outputs.object_id }}
+              appServiceName=${{ vars.AZURE_WEBAPP_NAME }}
 
       - name: Deploy Azure Infrastructure (Bicep)
         id: deploy-bicep
@@ -162,8 +152,6 @@ jobs:
             resourceGroupName=${{ vars.AZURE_RESOURCE_GROUP }}
             postgresAdminPassword=${{ secrets.POSTGRES_ADMIN_PASSWORD }}
             appServiceName=${{ vars.AZURE_WEBAPP_NAME }}
-            postgresEntraAdminPrincipalName='${{ steps.entra-admin.outputs.name }}'
-            postgresEntraAdminPrincipalObjectId=${{ steps.entra-admin.outputs.object_id }}
           deploymentName: family-travel-${{ github.run_number }}
 
       - name: Save infra outputs
