@@ -12,13 +12,16 @@ import {
   Clock,
   Users,
   Star,
+  Edit3,
+  Trash2,
+  Save,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/app-shell";
-import { ActivityCard } from "@/components/activity-card";
 import { SortableActivityList } from "@/components/sortable-activity-list";
 import { AddActivityModal } from "@/components/add-activity-modal";
 import {
@@ -80,10 +83,16 @@ interface FlightData {
   id: string;
   flightNumber: string;
   airline: string;
+  airlineCode: string;
   departureCity: string;
+  departureAirport: string;
   arrivalCity: string;
+  arrivalAirport: string;
   scheduledDeparture: string;
+  scheduledArrival: string;
   status: string;
+  terminal: string | null;
+  gate: string | null;
 }
 
 interface DocData {
@@ -92,7 +101,7 @@ interface DocData {
   type: string;
 }
 
-// ─── Demo data (will be replaced with API calls) ────────────────────────────
+// ─── Demo data ──────────────────────────────────────────────────────────────
 
 const DEMO_TRIPS: Record<string, TripData> = {
   "india-solo-2026": {
@@ -109,11 +118,7 @@ const DEMO_TRIPS: Record<string, TripData> = {
     travelers: 1,
     days: [
       {
-        id: "day-1",
-        date: "2026-04-10",
-        dayNum: 1,
-        city: "Hyderabad",
-        country: "India",
+        id: "day-1", date: "2026-04-10", dayNum: 1, city: "Hyderabad", country: "India",
         notes: "Arrival day — settle in and explore Old City",
         activities: [
           { id: "a1", name: "Flight DXB → HYD", type: "FLIGHT", status: "PLANNED", startTime: "2026-04-10T08:30:00", endTime: "2026-04-10T13:00:00", notes: "Emirates EK505", sortOrder: 0 },
@@ -124,11 +129,7 @@ const DEMO_TRIPS: Record<string, TripData> = {
         places: [],
       },
       {
-        id: "day-2",
-        date: "2026-04-11",
-        dayNum: 2,
-        city: "Hyderabad",
-        country: "India",
+        id: "day-2", date: "2026-04-11", dayNum: 2, city: "Hyderabad", country: "India",
         notes: "Full exploration day",
         activities: [
           { id: "a5", name: "Golconda Fort", type: "SIGHTSEEING", status: "PLANNED", startTime: "2026-04-11T09:00:00", endTime: "2026-04-11T12:00:00", notes: "Morning visit for cooler weather", sortOrder: 0 },
@@ -138,11 +139,7 @@ const DEMO_TRIPS: Record<string, TripData> = {
         places: [],
       },
       {
-        id: "day-3",
-        date: "2026-04-12",
-        dayNum: 3,
-        city: "Hyderabad",
-        country: "India",
+        id: "day-3", date: "2026-04-12", dayNum: 3, city: "Hyderabad", country: "India",
         notes: "Tech and shopping day",
         activities: [
           { id: "a8", name: "HITEC City Visit", type: "SIGHTSEEING", status: "PLANNED", startTime: "2026-04-12T10:00:00", endTime: "2026-04-12T13:00:00", notes: "Explore tech campus area", sortOrder: 0 },
@@ -152,8 +149,9 @@ const DEMO_TRIPS: Record<string, TripData> = {
       },
     ],
     flights: [
-      { id: "f1", flightNumber: "EK505", airline: "Emirates", departureCity: "Dubai", arrivalCity: "Hyderabad", scheduledDeparture: "2026-04-10T08:30:00", status: "SCHEDULED" },
-      { id: "f2", flightNumber: "6E2341", airline: "IndiGo", departureCity: "Hyderabad", arrivalCity: "Delhi", scheduledDeparture: "2026-04-15T06:00:00", status: "SCHEDULED" },
+      { id: "f1", flightNumber: "EK505", airline: "Emirates", airlineCode: "EK", departureCity: "Dubai", departureAirport: "DXB", arrivalCity: "Hyderabad", arrivalAirport: "HYD", scheduledDeparture: "2026-04-10T08:30:00", scheduledArrival: "2026-04-10T13:00:00", status: "SCHEDULED", terminal: "3", gate: null },
+      { id: "f2", flightNumber: "6E2341", airline: "IndiGo", airlineCode: "6E", departureCity: "Hyderabad", departureAirport: "HYD", arrivalCity: "Delhi", arrivalAirport: "DEL", scheduledDeparture: "2026-04-15T06:00:00", scheduledArrival: "2026-04-15T08:30:00", status: "SCHEDULED", terminal: "1", gate: null },
+      { id: "f3", flightNumber: "EK511", airline: "Emirates", airlineCode: "EK", departureCity: "Delhi", departureAirport: "DEL", arrivalCity: "Dubai", arrivalAirport: "DXB", scheduledDeparture: "2026-04-20T14:00:00", scheduledArrival: "2026-04-20T16:30:00", status: "SCHEDULED", terminal: "3", gate: null },
     ],
     documents: [
       { id: "d1", name: "India Visa", type: "VISA" },
@@ -174,11 +172,7 @@ const DEMO_TRIPS: Record<string, TripData> = {
     travelers: 5,
     days: [
       {
-        id: "day-f1",
-        date: "2026-12-05",
-        dayNum: 1,
-        city: "Cairo",
-        country: "Egypt",
+        id: "day-f1", date: "2026-12-05", dayNum: 1, city: "Cairo", country: "Egypt",
         notes: "Arrival in Cairo",
         activities: [
           { id: "fa1", name: "Flight to Cairo", type: "FLIGHT", status: "PLANNED", startTime: "2026-12-05T07:00:00", endTime: "2026-12-05T10:30:00", notes: "EgyptAir MS916", sortOrder: 0 },
@@ -188,11 +182,7 @@ const DEMO_TRIPS: Record<string, TripData> = {
         places: [],
       },
       {
-        id: "day-f2",
-        date: "2026-12-06",
-        dayNum: 2,
-        city: "Cairo",
-        country: "Egypt",
+        id: "day-f2", date: "2026-12-06", dayNum: 2, city: "Cairo", country: "Egypt",
         notes: "Pyramids day!",
         activities: [
           { id: "fa4", name: "Pyramids of Giza", type: "SIGHTSEEING", status: "PLANNED", startTime: "2026-12-06T08:00:00", endTime: "2026-12-06T12:00:00", notes: "Book guide in advance", sortOrder: 0 },
@@ -204,7 +194,9 @@ const DEMO_TRIPS: Record<string, TripData> = {
       },
     ],
     flights: [
-      { id: "ff1", flightNumber: "MS916", airline: "EgyptAir", departureCity: "Dubai", arrivalCity: "Cairo", scheduledDeparture: "2026-12-05T07:00:00", status: "SCHEDULED" },
+      { id: "ff1", flightNumber: "MS916", airline: "EgyptAir", airlineCode: "MS", departureCity: "Dubai", departureAirport: "DXB", arrivalCity: "Cairo", arrivalAirport: "CAI", scheduledDeparture: "2026-12-05T07:00:00", scheduledArrival: "2026-12-05T09:30:00", status: "SCHEDULED", terminal: "1", gate: null },
+      { id: "ff2", flightNumber: "MS714", airline: "EgyptAir", airlineCode: "MS", departureCity: "Cairo", departureAirport: "CAI", arrivalCity: "Sharm El Sheikh", arrivalAirport: "SSH", scheduledDeparture: "2026-12-10T10:00:00", scheduledArrival: "2026-12-10T11:00:00", status: "SCHEDULED", terminal: null, gate: null },
+      { id: "ff3", flightNumber: "SV1234", airline: "Saudia", airlineCode: "SV", departureCity: "Sharm El Sheikh", departureAirport: "SSH", arrivalCity: "Jeddah", arrivalAirport: "JED", scheduledDeparture: "2026-12-14T12:00:00", scheduledArrival: "2026-12-14T14:00:00", status: "SCHEDULED", terminal: null, gate: null },
     ],
     documents: [
       { id: "fd1", name: "Passports", type: "PASSPORT" },
@@ -214,6 +206,240 @@ const DEMO_TRIPS: Record<string, TripData> = {
   },
 };
 
+// ─── Edit Flight Modal ──────────────────────────────────────────────────────
+
+function EditFlightModal({
+  flight,
+  onSave,
+  onClose,
+}: {
+  flight: FlightData | null;
+  onSave: (f: FlightData) => void;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<FlightData>(
+    flight || {
+      id: `fl-${Date.now()}`,
+      flightNumber: "",
+      airline: "",
+      airlineCode: "",
+      departureCity: "",
+      departureAirport: "",
+      arrivalCity: "",
+      arrivalAirport: "",
+      scheduledDeparture: "",
+      scheduledArrival: "",
+      status: "SCHEDULED",
+      terminal: null,
+      gate: null,
+    }
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+            ✈️ {flight ? "Edit Flight" : "Add Flight"}
+          </h3>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={18} /></button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Flight Number</label>
+              <input value={form.flightNumber} onChange={(e) => setForm({ ...form, flightNumber: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="EK505" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Airline</label>
+              <input value={form.airline} onChange={(e) => setForm({ ...form, airline: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="Emirates" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">From (City)</label>
+              <input value={form.departureCity} onChange={(e) => setForm({ ...form, departureCity: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="Dubai" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">From (Airport)</label>
+              <input value={form.departureAirport} onChange={(e) => setForm({ ...form, departureAirport: e.target.value.toUpperCase() })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase" placeholder="DXB" maxLength={4} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">To (City)</label>
+              <input value={form.arrivalCity} onChange={(e) => setForm({ ...form, arrivalCity: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="Hyderabad" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">To (Airport)</label>
+              <input value={form.arrivalAirport} onChange={(e) => setForm({ ...form, arrivalAirport: e.target.value.toUpperCase() })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase" placeholder="HYD" maxLength={4} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Departure</label>
+              <input type="datetime-local" value={form.scheduledDeparture ? form.scheduledDeparture.slice(0, 16) : ""}
+                onChange={(e) => setForm({ ...form, scheduledDeparture: e.target.value + ":00" })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Arrival</label>
+              <input type="datetime-local" value={form.scheduledArrival ? form.scheduledArrival.slice(0, 16) : ""}
+                onChange={(e) => setForm({ ...form, scheduledArrival: e.target.value + ":00" })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Terminal</label>
+              <input value={form.terminal || ""} onChange={(e) => setForm({ ...form, terminal: e.target.value || null })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="3" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Gate</label>
+              <input value={form.gate || ""} onChange={(e) => setForm({ ...form, gate: e.target.value || null })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="B12" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose}
+            className="flex-1 px-4 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={() => { onSave(form); onClose(); }}
+            disabled={!form.flightNumber || !form.departureCity || !form.arrivalCity}
+            className="flex-1 px-4 py-3 rounded-2xl bg-gradient-to-r from-coral to-sunset text-white font-bold text-sm shadow-lg shadow-coral/25 disabled:opacity-50">
+            <Save size={14} className="inline mr-1.5" />
+            {flight ? "Save Changes" : "Add Flight"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── Edit Trip Modal ────────────────────────────────────────────────────────
+
+function EditTripModal({
+  trip,
+  onSave,
+  onClose,
+}: {
+  trip: TripData;
+  onSave: (t: Partial<TripData>) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(trip.name);
+  const [description, setDescription] = useState(trip.description || "");
+  const [startDate, setStartDate] = useState(trip.startDate);
+  const [endDate, setEndDate] = useState(trip.endDate);
+  const [travelers, setTravelers] = useState(trip.travelers);
+  const [cities, setCities] = useState(trip.cities.join(", "));
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+            ✏️ Edit Trip
+          </h3>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={18} /></button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-500 block mb-1">Trip Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-500 block mb-1">Description</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 resize-none" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Start Date</label>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">End Date</label>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Travelers</label>
+              <input type="number" min={1} max={20} value={travelers} onChange={(e) => setTravelers(Number(e.target.value))}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Cities (comma-separated)</label>
+              <input value={cities} onChange={(e) => setCities(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose}
+            className="flex-1 px-4 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={() => { onSave({ name, description, startDate, endDate, travelers, cities: cities.split(",").map((c) => c.trim()).filter(Boolean) }); onClose(); }}
+            className="flex-1 px-4 py-3 rounded-2xl bg-gradient-to-r from-coral to-sunset text-white font-bold text-sm shadow-lg shadow-coral/25">
+            <Save size={14} className="inline mr-1.5" />Save
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function TripDetailPage() {
@@ -222,10 +448,12 @@ export default function TripDetailPage() {
   const [trip, setTrip] = useState<TripData | null>(null);
   const [selectedDay, setSelectedDay] = useState(0);
   const [showAddActivity, setShowAddActivity] = useState(false);
+  const [showEditTrip, setShowEditTrip] = useState(false);
+  const [showEditFlight, setShowEditFlight] = useState(false);
+  const [editingFlight, setEditingFlight] = useState<FlightData | null>(null);
   const [activeTab, setActiveTab] = useState<"schedule" | "places" | "flights" | "docs">("schedule");
 
   useEffect(() => {
-    // TODO: Replace with API call
     const data = DEMO_TRIPS[tripId];
     if (data) setTrip(data);
   }, [tripId]);
@@ -249,12 +477,55 @@ export default function TripDetailPage() {
     setShowAddActivity(false);
   }, [trip, selectedDay]);
 
+  const handleSaveFlight = (flight: FlightData) => {
+    setTrip((prev) => {
+      if (!prev) return prev;
+      const idx = prev.flights.findIndex((f) => f.id === flight.id);
+      const flights = [...prev.flights];
+      if (idx >= 0) {
+        flights[idx] = flight;
+      } else {
+        flights.push(flight);
+      }
+      return { ...prev, flights };
+    });
+  };
+
+  const handleDeleteFlight = (flightId: string) => {
+    setTrip((prev) => {
+      if (!prev) return prev;
+      return { ...prev, flights: prev.flights.filter((f) => f.id !== flightId) };
+    });
+  };
+
+  const handleUpdateTrip = (updates: Partial<TripData>) => {
+    setTrip((prev) => prev ? { ...prev, ...updates } : prev);
+  };
+
+  const handleDeleteActivity = (activityId: string) => {
+    setTrip((prev) => {
+      if (!prev) return prev;
+      const days = [...prev.days];
+      days[selectedDay] = {
+        ...days[selectedDay],
+        activities: days[selectedDay].activities.filter((a) => a.id !== activityId),
+      };
+      return { ...prev, days };
+    });
+  };
+
   if (!trip) {
     return (
       <AppShell>
         <div className="flex items-center justify-center h-[60vh]">
           <div className="text-center space-y-4">
-            <div className="text-6xl animate-bounce">🗺️</div>
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 10, 0], y: [0, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-7xl"
+            >
+              🗺️
+            </motion.div>
             <p className="text-lg font-bold text-slate-400">Trip not found</p>
             <Link
               href="/"
@@ -280,7 +551,7 @@ export default function TripDetailPage() {
     <AppShell>
       <div className="max-w-5xl mx-auto">
         {/* ─── Hero Banner ───────────────────────────────────────── */}
-        <div className="relative h-48 sm:h-64 overflow-hidden">
+        <div className="relative h-52 sm:h-72 overflow-hidden">
           {trip.coverImage && (
             <Image
               src={trip.coverImage}
@@ -292,15 +563,26 @@ export default function TripDetailPage() {
             />
           )}
           <div className={`absolute inset-0 bg-gradient-to-t ${visuals.gradient} mix-blend-multiply opacity-70`} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-          {/* Back button */}
-          <Link
-            href="/"
-            className="absolute top-4 left-4 z-10 glass rounded-full p-2 hover:scale-105 transition-transform"
-          >
-            <ChevronLeft size={20} className="text-slate-700" />
-          </Link>
+          {/* Back + Edit buttons */}
+          <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
+            <Link
+              href="/"
+              className="glass rounded-full p-2.5 hover:scale-105 transition-transform shadow-lg"
+            >
+              <ChevronLeft size={20} className="text-slate-700" />
+            </Link>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowEditTrip(true)}
+              className="glass rounded-full px-4 py-2 flex items-center gap-1.5 shadow-lg"
+            >
+              <Edit3 size={14} className="text-slate-600" />
+              <span className="text-xs font-bold text-slate-600">Edit Trip</span>
+            </motion.button>
+          </div>
 
           {/* Trip info overlay */}
           <div className="absolute bottom-4 left-4 right-4 z-10">
@@ -311,7 +593,7 @@ export default function TripDetailPage() {
                   {trip.type === "SOLO" ? "Solo Trip" : "Family Trip"}
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white">{trip.name}</h1>
+              <h1 className="text-2xl sm:text-4xl font-black text-white drop-shadow-lg">{trip.name}</h1>
               <div className="flex flex-wrap items-center gap-3 mt-2 text-white/80 text-xs font-semibold">
                 <span className="flex items-center gap-1">
                   <CalendarDays size={14} />
@@ -321,7 +603,7 @@ export default function TripDetailPage() {
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin size={14} />
-                  {trip.cities.join(", ")}
+                  {trip.cities.join(" → ")}
                 </span>
                 <span className="flex items-center gap-1">
                   <Users size={14} />
@@ -336,19 +618,23 @@ export default function TripDetailPage() {
           {/* ─── Stats Strip ─────────────────────────────────────── */}
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: "Days", value: trip.days.length, emoji: "📅" },
-              { label: "Activities", value: totalActivities, emoji: "📋" },
-              { label: "Flights", value: trip.flights.length, emoji: "✈️" },
-              { label: "Docs", value: trip.documents.length, emoji: "📄" },
-            ].map((stat) => (
+              { label: "Days", value: trip.days.length, emoji: "📅", color: "from-sky-400 to-blue-500" },
+              { label: "Activities", value: totalActivities, emoji: "📋", color: "from-amber-400 to-orange-500" },
+              { label: "Flights", value: trip.flights.length, emoji: "✈️", color: "from-coral to-sunset" },
+              { label: "Docs", value: trip.documents.length, emoji: "📄", color: "from-emerald-400 to-teal-500" },
+            ].map((stat, i) => (
               <motion.div
                 key={stat.label}
-                whileHover={{ y: -2 }}
-                className="glass rounded-2xl p-3 text-center"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.08 * i, type: "spring" }}
+                whileHover={{ y: -3, scale: 1.03 }}
+                className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${stat.color} p-3 text-center text-white shadow-md`}
               >
+                <div className="absolute -top-2 -right-2 w-10 h-10 rounded-full bg-white/10" />
                 <div className="text-xl mb-1">{stat.emoji}</div>
-                <div className="text-xl font-black text-slate-800">{stat.value}</div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase">{stat.label}</div>
+                <div className="text-2xl font-black">{stat.value}</div>
+                <div className="text-[10px] font-bold uppercase opacity-80">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -359,7 +645,7 @@ export default function TripDetailPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-bold text-slate-600">Trip Progress</span>
                 <span className="text-sm font-black text-coral">
-                  {doneActivities}/{totalActivities}
+                  {doneActivities}/{totalActivities} done
                 </span>
               </div>
               <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -377,16 +663,16 @@ export default function TripDetailPage() {
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {(
               [
-                { key: "schedule", label: "Schedule", icon: CalendarDays, emoji: "📅" },
-                { key: "places", label: "Places", icon: MapPin, emoji: "📍" },
-                { key: "flights", label: "Flights", icon: Plane, emoji: "✈️" },
-                { key: "docs", label: "Documents", icon: FileText, emoji: "📄" },
+                { key: "schedule", label: "Schedule", emoji: "📅" },
+                { key: "flights", label: "Flights", emoji: "✈️" },
+                { key: "places", label: "Places", emoji: "📍" },
+                { key: "docs", label: "Documents", emoji: "📄" },
               ] as const
             ).map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-bold whitespace-nowrap transition-all ${
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold whitespace-nowrap transition-all ${
                   activeTab === tab.key
                     ? "bg-gradient-to-r from-coral to-sunset text-white shadow-lg shadow-coral/25"
                     : "glass text-slate-500 hover:text-slate-700"
@@ -460,25 +746,20 @@ export default function TripDetailPage() {
                         </h3>
                         <p className="text-sm text-slate-400 font-semibold">
                           {new Date(currentDay.date).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            month: "long",
-                            day: "numeric",
+                            weekday: "long", month: "long", day: "numeric",
                           })}
-                          {" • "}
-                          {currentDay.country}
+                          {" • "}{currentDay.country}
                         </p>
                         {currentDay.notes && (
-                          <p className="text-sm text-slate-500 mt-1 italic">
-                            {currentDay.notes}
-                          </p>
+                          <p className="text-sm text-slate-500 mt-1 italic">{currentDay.notes}</p>
                         )}
                       </div>
                       <button
                         onClick={() => setShowAddActivity(true)}
-                        className="flex items-center gap-1.5 bg-gradient-to-r from-coral to-sunset text-white px-3 py-2 rounded-2xl text-xs font-bold shadow-lg shadow-coral/25 hover:scale-105 transition-transform"
+                        className="flex items-center gap-1.5 bg-gradient-to-r from-coral to-sunset text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-lg shadow-coral/25 hover:scale-105 transition-transform"
                       >
                         <Plus size={14} />
-                        Add
+                        Add Activity
                       </button>
                     </div>
                   </div>
@@ -489,11 +770,9 @@ export default function TripDetailPage() {
                   <div className="space-y-3">
                     {currentDay.activities.length === 0 ? (
                       <div className="text-center py-12 glass rounded-2xl">
-                        <div className="text-5xl mb-3">📝</div>
+                        <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 2, repeat: Infinity }} className="text-6xl mb-3">📝</motion.div>
                         <p className="text-slate-400 font-bold">No activities yet</p>
-                        <p className="text-sm text-slate-300">
-                          Tap + to add your first activity
-                        </p>
+                        <p className="text-sm text-slate-300">Tap + to add your first activity</p>
                       </div>
                     ) : (
                       <SortableActivityList
@@ -524,6 +803,91 @@ export default function TripDetailPage() {
               </motion.div>
             )}
 
+            {/* ─── Flights Tab ─────────────────────────────────────── */}
+            {activeTab === "flights" && (
+              <motion.div
+                key="flights"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-slate-500">
+                    {trip.flights.length} flight{trip.flights.length !== 1 ? "s" : ""}
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => { setEditingFlight(null); setShowEditFlight(true); }}
+                    className="flex items-center gap-1.5 bg-gradient-to-r from-coral to-sunset text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-lg shadow-coral/25"
+                  >
+                    <Plus size={14} />
+                    Add Flight
+                  </motion.button>
+                </div>
+
+                {trip.flights.length === 0 ? (
+                  <div className="text-center py-16">
+                    <motion.div animate={{ rotate: [0, -5, 5, 0], y: [0, -8, 0] }} transition={{ duration: 3, repeat: Infinity }} className="text-7xl mb-4">✈️</motion.div>
+                    <p className="text-slate-400 font-bold text-lg">No flights yet</p>
+                    <p className="text-sm text-slate-300 mt-1">Add your flights to track them</p>
+                  </div>
+                ) : (
+                  trip.flights.map((flight) => (
+                    <motion.div
+                      key={flight.id}
+                      whileHover={{ y: -2, scale: 1.01 }}
+                      className="glass rounded-2xl p-5 group relative"
+                    >
+                      {/* Edit/Delete buttons */}
+                      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => { setEditingFlight(flight); setShowEditFlight(true); }}
+                          className="p-2 rounded-full bg-white/80 hover:bg-coral/10 transition-colors"
+                        >
+                          <Edit3 size={14} className="text-slate-500" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFlight(flight.id)}
+                          className="p-2 rounded-full bg-white/80 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={14} className="text-red-400" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-ocean flex items-center justify-center text-white text-2xl shadow-md">
+                          ✈️
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-black text-slate-800">{flight.flightNumber}</p>
+                            <span className="text-xs font-semibold text-slate-400">• {flight.airline}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <span className="font-bold text-slate-700">{flight.departureAirport}</span>
+                            <div className="flex-1 flex items-center gap-1 text-slate-300">
+                              <div className="h-[2px] flex-1 bg-gradient-to-r from-sky-300 to-ocean/50 rounded-full" />
+                              <Plane size={14} className="text-coral rotate-45" />
+                              <div className="h-[2px] flex-1 bg-gradient-to-r from-ocean/50 to-sky-300 rounded-full" />
+                            </div>
+                            <span className="font-bold text-slate-700">{flight.arrivalAirport}</span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400 font-semibold">
+                            <span>{new Date(flight.scheduledDeparture).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                            <span>{new Date(flight.scheduledDeparture).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
+                            {flight.terminal && <span>Terminal {flight.terminal}</span>}
+                            {flight.gate && <span>Gate {flight.gate}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </motion.div>
+            )}
+
             {/* ─── Places Tab ──────────────────────────────────────── */}
             {activeTab === "places" && (
               <motion.div
@@ -533,66 +897,19 @@ export default function TripDetailPage() {
                 exit={{ opacity: 0, y: -10 }}
                 className="text-center py-16"
               >
-                <div className="text-6xl mb-4">📍</div>
-                <h3 className="text-lg font-bold text-slate-600">Places coming soon</h3>
+                <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2.5, repeat: Infinity }} className="text-7xl mb-4">📍</motion.div>
+                <h3 className="text-lg font-bold text-slate-600">Explore Places</h3>
                 <p className="text-sm text-slate-400 mt-1">
                   Visit the{" "}
                   <Link href="/places" className="text-coral font-bold hover:underline">
                     Places page
                   </Link>{" "}
-                  to manage your places
+                  to manage your saved places
                 </p>
               </motion.div>
             )}
 
-            {/* ─── Flights Tab ─────────────────────────────────────── */}
-            {activeTab === "flights" && (
-              <motion.div
-                key="flights"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-3"
-              >
-                {trip.flights.length === 0 ? (
-                  <div className="text-center py-16">
-                    <div className="text-6xl mb-4">✈️</div>
-                    <p className="text-slate-400 font-bold">No flights added yet</p>
-                  </div>
-                ) : (
-                  trip.flights.map((flight) => (
-                    <motion.div
-                      key={flight.id}
-                      whileHover={{ y: -2 }}
-                      className="glass rounded-2xl p-4 flex items-center gap-4"
-                    >
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-400 to-ocean flex items-center justify-center text-white text-xl">
-                        ✈️
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-800">{flight.flightNumber}</p>
-                        <p className="text-sm text-slate-400">
-                          {flight.departureCity} → {flight.arrivalCity}
-                        </p>
-                        <p className="text-xs text-slate-300">
-                          {new Date(flight.scheduledDeparture).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
-                        {flight.status}
-                      </span>
-                    </motion.div>
-                  ))
-                )}
-              </motion.div>
-            )}
-
-            {/* ─── Docs Tab ───────────────────────────────────────── */}
+            {/* ─── Documents Tab ───────────────────────────────────── */}
             {activeTab === "docs" && (
               <motion.div
                 key="docs"
@@ -603,7 +920,7 @@ export default function TripDetailPage() {
               >
                 {trip.documents.length === 0 ? (
                   <div className="text-center py-16">
-                    <div className="text-6xl mb-4">📄</div>
+                    <div className="text-7xl mb-4">📄</div>
                     <p className="text-slate-400 font-bold">No documents yet</p>
                   </div>
                 ) : (
@@ -613,12 +930,12 @@ export default function TripDetailPage() {
                       whileHover={{ y: -2 }}
                       className="glass rounded-2xl p-4 flex items-center gap-4"
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl">
-                        📄
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl shadow-md">
+                        {doc.type === "VISA" ? "🛂" : doc.type === "PASSPORT" ? "📕" : doc.type === "UMRAH_PERMIT" ? "🕌" : "📄"}
                       </div>
-                      <div className="flex-1">
+                      <div>
                         <p className="font-bold text-slate-800">{doc.name}</p>
-                        <p className="text-sm text-slate-400">{doc.type.replace(/_/g, " ")}</p>
+                        <p className="text-xs text-slate-400 font-semibold">{doc.type.replace(/_/g, " ")}</p>
                       </div>
                     </motion.div>
                   ))
@@ -629,12 +946,30 @@ export default function TripDetailPage() {
         </div>
       </div>
 
-      {/* Add Activity Modal */}
-      <AddActivityModal
-        open={showAddActivity}
-        onClose={() => setShowAddActivity(false)}
-        onAdd={handleAddActivity}
-      />
+      {/* ─── Modals ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {showAddActivity && (
+          <AddActivityModal
+            open={showAddActivity}
+            onAdd={handleAddActivity}
+            onClose={() => setShowAddActivity(false)}
+          />
+        )}
+        {showEditTrip && trip && (
+          <EditTripModal
+            trip={trip}
+            onSave={handleUpdateTrip}
+            onClose={() => setShowEditTrip(false)}
+          />
+        )}
+        {showEditFlight && (
+          <EditFlightModal
+            flight={editingFlight}
+            onSave={handleSaveFlight}
+            onClose={() => setShowEditFlight(false)}
+          />
+        )}
+      </AnimatePresence>
     </AppShell>
   );
 }

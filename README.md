@@ -139,11 +139,17 @@ See [DEPLOY.md](DEPLOY.md) for complete deployment instructions, OIDC setup for 
 Every push to `main` triggers the GitHub Actions pipeline which:
 
 1. Builds and lints the Next.js app
-2. Provisions Azure infrastructure via Bicep
-3. Deploys the standalone build to App Service
-4. Runs Prisma migrations against the production database
+2. Provisions Azure infrastructure via Bicep (subscription-scoped)
+3. Packages standalone output into a zip via `tar`
+4. Deploys to App Service via `az webapp deploy --type zip`
+5. Verifies deployment with a health check
+6. Runs Prisma migrations against the production database
 
 Manual infrastructure deployments can be triggered via `workflow_dispatch` in the Actions tab.
+
+## Live Site
+
+The app is deployed at [https://hammadtravel.azurewebsites.net](https://hammadtravel.azurewebsites.net).
 
 ## License
 

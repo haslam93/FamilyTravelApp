@@ -2,17 +2,9 @@
 
 import { motion } from "framer-motion";
 import {
-  Settings as SettingsIcon,
-  Key,
   Globe,
-  Calendar,
-  Plane,
-  Bell,
-  Palette,
   Shield,
-  ExternalLink,
   Check,
-  ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -22,7 +14,6 @@ import { AppShell } from "@/components/app-shell";
 interface SettingsState {
   pin: string;
   timezone: string;
-  tripItConnected: boolean;
   googleCalendarConnected: boolean;
   selectedCalendar: string;
   notifications: boolean;
@@ -52,7 +43,6 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsState>({
     pin: "",
     timezone: "Asia/Dubai",
-    tripItConnected: false,
     googleCalendarConnected: false,
     selectedCalendar: "",
     notifications: true,
@@ -69,14 +59,9 @@ export default function SettingsPage() {
     setPinInput("");
   };
 
-  const handleConnectTripIt = () => {
-    // TODO: Redirect to TripIt OAuth flow
-    alert("TripIt OAuth flow would start here. Set TRIPIT_API_KEY and TRIPIT_API_SECRET in .env");
-  };
-
   const handleConnectGoogle = () => {
-    // TODO: Redirect to Google OAuth flow
-    window.location.href = "/api/auth/google/callback?setup=true";
+    // Redirect to the Google OAuth consent screen (server generates the URL)
+    window.location.href = "/api/auth/google/start";
   };
 
   return (
@@ -154,33 +139,6 @@ export default function SettingsPage() {
             <h2 className="font-bold text-slate-800 flex items-center gap-2">
               🔗 Integrations
             </h2>
-
-            {/* TripIt */}
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/80">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-xl">
-                  ✈️
-                </div>
-                <div>
-                  <p className="font-bold text-slate-800 text-sm">TripIt</p>
-                  <p className="text-xs text-slate-400">
-                    {settings.tripItConnected ? "Connected" : "Sync itineraries from TripIt"}
-                  </p>
-                </div>
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleConnectTripIt}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  settings.tripItConnected
-                    ? "bg-emerald-50 text-emerald-600"
-                    : "bg-gradient-to-r from-sky-400 to-ocean text-white shadow-sm"
-                }`}
-              >
-                {settings.tripItConnected ? "✅ Connected" : "Connect"}
-              </motion.button>
-            </div>
 
             {/* Google Calendar */}
             <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/80">

@@ -4,8 +4,8 @@
 
 export const CITY_IMAGES: Record<string, { hero: string; thumb: string; credit: string }> = {
   hyderabad: {
-    hero: "https://images.unsplash.com/photo-1572638075568-07d4a3a77375?w=1200&q=80",
-    thumb: "https://images.unsplash.com/photo-1572638075568-07d4a3a77375?w=400&q=80",
+    hero: "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=1200&q=80",
+    thumb: "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=400&q=80",
     credit: "Charminar, Hyderabad",
   },
   delhi: {
@@ -14,8 +14,8 @@ export const CITY_IMAGES: Record<string, { hero: string; thumb: string; credit: 
     credit: "India Gate, New Delhi",
   },
   cairo: {
-    hero: "https://images.unsplash.com/photo-1539768942893-daf53e736b68?w=1200&q=80",
-    thumb: "https://images.unsplash.com/photo-1539768942893-daf53e736b68?w=400&q=80",
+    hero: "https://images.unsplash.com/photo-1553913861-c0fddf2619ee?w=1200&q=80",
+    thumb: "https://images.unsplash.com/photo-1553913861-c0fddf2619ee?w=400&q=80",
     credit: "Pyramids of Giza, Cairo",
   },
   "sharm-el-sheikh": {
@@ -24,8 +24,8 @@ export const CITY_IMAGES: Record<string, { hero: string; thumb: string; credit: 
     credit: "Red Sea, Sharm El Sheikh",
   },
   makkah: {
-    hero: "https://images.unsplash.com/photo-1591604129939-f1efa4d99f7e?w=1200&q=80",
-    thumb: "https://images.unsplash.com/photo-1591604129939-f1efa4d99f7e?w=400&q=80",
+    hero: "https://images.unsplash.com/photo-1580418827493-f2b22c0a76cb?w=1200&q=80",
+    thumb: "https://images.unsplash.com/photo-1580418827493-f2b22c0a76cb?w=400&q=80",
     credit: "Masjid al-Haram, Makkah",
   },
   madinah: {

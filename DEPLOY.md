@@ -153,18 +153,25 @@ npm run build
 # Package standalone output
 cp -r .next/static .next/standalone/.next/static
 cp -r public .next/standalone/public
+cp -r prisma .next/standalone/prisma
 
-# Zip and deploy
+# Create zip and deploy
 cd .next/standalone
-zip -r ../../deploy.zip .
+tar -cf ../../deploy.zip --format=zip .
 cd ../..
 
 az webapp deploy \
   --resource-group "<AZURE_RESOURCE_GROUP>" \
   --name "<AZURE_WEBAPP_NAME>" \
   --src-path deploy.zip \
-  --type zip
+  --type zip \
+  --clean true
 ```
+
+> **Important**: Do NOT use `azure/webapps-deploy` or set `WEBSITE_RUN_FROM_PACKAGE=1`.
+> The App Service Bicep template already disables Oryx (`ENABLE_ORYX_BUILD=false`,
+> `SCM_DO_BUILD_DURING_DEPLOYMENT=false`) and sets the startup command to
+> `node server.js`.
 
 ### Step 5 — Run Prisma migrations
 
@@ -201,8 +208,10 @@ Set these as **repository variables** (Settings > Secrets and variables > Action
 | `AZURE_CLIENT_ID`       | Client ID of the Entra ID (AAD) app registration     |
 | `AZURE_TENANT_ID`       | Your Azure tenant ID                                 |
 | `AZURE_SUBSCRIPTION_ID` | Your Azure subscription ID                           |
-| `AZURE_LOCATION`        | Azure region (e.g., `eastus`)                        |
-| `AZURE_RESOURCE_GROUP`  | Resource group name (e.g., `rg-prod`)                |
+| `AZURE_LOCATION`        | Azure region (e.g., `swedencentral`)                 |
+| `AZURE_RESOURCE_GROUP`  | Resource group name (e.g., `rg-familytravelapp`)     |
+| `AZURE_WEBAPP_NAME`     | App Service name (e.g., `hammadtravel`)              |
+| `AZURE_ENV_NAME`        | Environment name for Bicep (e.g., `familytravelapp`) |
 
 Set this as a **repository secret**:
 
@@ -306,3 +315,11 @@ az deployment sub show \
   exists on the PostgreSQL server and the connection string is correct.
 * **Storage access denied**: The managed identity needs time to propagate after
   role assignment. Wait 5 minutes and retry.
+* **PostgreSQL server stopped**: The server may auto-stop to save costs. Start
+  it before deploying: `az postgres flexible-server start --resource-group <RG> --name <SERVER>`.
+* **Oryx compresses node_modules**: This is prevented by the Bicep template
+  setting `ENABLE_ORYX_BUILD=false`. Do NOT remove this setting.
+* **WEBSITE_RUN_FROM_PACKAGE breaks deployment**: Do NOT set this. The app
+  must be deployed to wwwroot directly for `node server.js` to work.
+* **Files not found after deploy**: Ensure the zip was created from inside
+  the `.next/standalone` directory so files are at the root, not nested.

@@ -1,7 +1,7 @@
 # ─── Family Travel Companion App ─ CI/CD Pipeline ────────────────────────────
-# Builds, provisions Azure infrastructure (via Bicep), and deploys to
-# Azure App Service using OIDC federated credentials.
-# NO secrets stored — uses Azure Managed Identity throughout.
+# Builds standalone Next.js output, provisions Azure infrastructure (Bicep),
+# and deploys via `az webapp deploy` with zip packaging.
+# Uses OIDC federated credentials — no stored secrets except DB password.
 
 name: Build and Deploy
 
@@ -20,10 +20,6 @@ on:
         options:
           - "true"
           - "false"
-      resource_group_name:
-        description: "Resource group name (default: rg-prod)"
-        required: false
-        default: "rg-prod"
 
 permissions:
   id-token: write # Required for OIDC federated credential
@@ -31,7 +27,6 @@ permissions:
 
 env:
   NODE_VERSION: "20.x"
-  AZURE_ENV_NAME: "prod"
 
 jobs:
   # ─── Build ─────────────────────────────────────────────────────────────────
@@ -61,19 +56,26 @@ jobs:
         env:
           DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
-      # Package standalone output with static assets and public folder
+      # Package standalone output with static assets, public folder, and prisma
       - name: Prepare deployment package
         run: |
           cp -r .next/static .next/standalone/.next/static
           cp -r public .next/standalone/public
-          cp prisma -r .next/standalone/prisma
+          cp -r prisma .next/standalone/prisma
           cp package.json .next/standalone/
 
-      - name: Upload build artifact
+      # Create zip using tar (more reliable than zip for preserving structure)
+      - name: Create deployment zip
+        run: |
+          cd .next/standalone
+          tar -cf ../../deploy.zip --format=zip .
+          cd ../..
+
+      - name: Upload deployment artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nextjs-build
-          path: .next/standalone/
+          name: deploy-package
+          path: deploy.zip
           retention-days: 1
 
   # ─── Provision Infrastructure ──────────────────────────────────────────────
@@ -84,13 +86,14 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_infra == 'true')
     environment: production
     outputs:
-      webapp_name: ${{ steps.deploy-bicep.outputs.webappName }}
+      webapp_name: ${{ steps.infra-outputs.outputs.webapp_name }}
+      resource_group: ${{ steps.infra-outputs.outputs.resource_group }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Login to Azure (OIDC Federated Credential)
+      - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
@@ -102,18 +105,21 @@ jobs:
         uses: azure/arm-deploy@v2
         with:
           scope: subscription
-          region: ${{ vars.AZURE_LOCATION || 'eastus' }}
+          region: ${{ vars.AZURE_LOCATION }}
           template: infra/main.bicep
           parameters: >-
-            environmentName=${{ env.AZURE_ENV_NAME }}
-            resourceGroupName=${{ github.event.inputs.resource_group_name || vars.AZURE_RESOURCE_GROUP || 'rg-prod' }}
+            environmentName=${{ vars.AZURE_ENV_NAME || 'familytravelapp' }}
+            location=${{ vars.AZURE_LOCATION }}
+            resourceGroupName=${{ vars.AZURE_RESOURCE_GROUP }}
             postgresAdminPassword=${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+            appServiceName=${{ vars.AZURE_WEBAPP_NAME }}
           deploymentName: family-travel-${{ github.run_number }}
 
       - name: Save infra outputs
         id: infra-outputs
         run: |
-          echo "webappName=${{ steps.deploy-bicep.outputs.AZURE_WEBAPP_NAME }}" >> $GITHUB_OUTPUT
+          echo "webapp_name=${{ steps.deploy-bicep.outputs.AZURE_WEBAPP_NAME }}" >> "$GITHUB_OUTPUT"
+          echo "resource_group=${{ steps.deploy-bicep.outputs.AZURE_RESOURCE_GROUP }}" >> "$GITHUB_OUTPUT"
 
       - name: Azure logout
         if: always()
@@ -131,25 +137,19 @@ jobs:
     environment: production
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: prisma
-
-      - name: Download build artifact
+      - name: Download deployment artifact
         uses: actions/download-artifact@v4
         with:
-          name: nextjs-build
-          path: ./deploy
+          name: deploy-package
 
-      - name: Login to Azure (OIDC Federated Credential)
+      - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Get Web App name
+      - name: Resolve Web App and Resource Group names
         id: webapp
         run: |
           # Use infra output if available, otherwise fall back to variable
@@ -157,23 +157,67 @@ jobs:
           if [ -z "$WEBAPP_NAME" ]; then
             WEBAPP_NAME="${{ vars.AZURE_WEBAPP_NAME }}"
           fi
-          echo "name=$WEBAPP_NAME" >> $GITHUB_OUTPUT
+          RG_NAME="${{ needs.infra.outputs.resource_group }}"
+          if [ -z "$RG_NAME" ]; then
+            RG_NAME="${{ vars.AZURE_RESOURCE_GROUP }}"
+          fi
+          echo "name=$WEBAPP_NAME" >> "$GITHUB_OUTPUT"
+          echo "rg=$RG_NAME" >> "$GITHUB_OUTPUT"
 
+      # Ensure the PostgreSQL server is running before deploying
+      - name: Start PostgreSQL server (if stopped)
+        run: |
+          PG_NAME=$(az postgres flexible-server list \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
+            --query "[0].name" -o tsv 2>/dev/null || true)
+          if [ -n "$PG_NAME" ]; then
+            STATE=$(az postgres flexible-server show \
+              --resource-group ${{ steps.webapp.outputs.rg }} \
+              --name "$PG_NAME" \
+              --query "state" -o tsv)
+            if [ "$STATE" != "Ready" ]; then
+              echo "Starting PostgreSQL server $PG_NAME..."
+              az postgres flexible-server start \
+                --resource-group ${{ steps.webapp.outputs.rg }} \
+                --name "$PG_NAME"
+            else
+              echo "PostgreSQL server $PG_NAME is already running."
+            fi
+          fi
+
+      # Deploy the zip directly — Oryx is disabled in Bicep app settings
       - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ steps.webapp.outputs.name }}
-          package: ./deploy
+        run: |
+          az webapp deploy \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
+            --name ${{ steps.webapp.outputs.name }} \
+            --src-path deploy.zip \
+            --type zip \
+            --clean true
+
+      - name: Verify deployment
+        run: |
+          SITE_URL=$(az webapp show \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
+            --name ${{ steps.webapp.outputs.name }} \
+            --query "defaultHostName" -o tsv)
+          echo "Deployed to https://$SITE_URL"
+          sleep 10
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$SITE_URL" --max-time 30 || echo "000")
+          echo "Health check: HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::warning::Health check returned HTTP $HTTP_CODE"
+          fi
 
       - name: Run Prisma Migrations
         run: |
-          # Get the DATABASE_URL from App Service settings
+          # Fetch DATABASE_URL from App Service settings
           DB_URL=$(az webapp config appsettings list \
             --name ${{ steps.webapp.outputs.name }} \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP || 'rg-prod' }} \
+            --resource-group ${{ steps.webapp.outputs.rg }} \
             --query "[?name=='DATABASE_URL'].value" -o tsv)
           export DATABASE_URL="$DB_URL"
-          npm install prisma --no-save
+          npm install prisma@latest --no-save
           npx prisma migrate deploy
 
       - name: Azure logout

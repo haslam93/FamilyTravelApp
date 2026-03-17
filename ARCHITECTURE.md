@@ -246,9 +246,9 @@ graph LR
     end
 
     subgraph Jobs["GitHub Actions Jobs"]
-        BUILD["Build<br/>npm ci → prisma generate<br/>→ lint → next build"]
+        BUILD["Build<br/>npm ci → prisma generate<br/>→ lint → next build<br/>→ tar zip"]
         INFRA["Infra<br/>az deployment sub create<br/>Bicep templates"]
-        DEPLOY["Deploy<br/>azure/webapps-deploy<br/>+ prisma migrate"]
+        DEPLOY["Deploy<br/>az webapp deploy --type zip<br/>+ health check<br/>+ prisma migrate"]
     end
 
     PUSH --> BUILD

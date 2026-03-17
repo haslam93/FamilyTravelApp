@@ -1,0 +1,117 @@
+2026-03-16T18:32:37.6382196Z State: Starting, Action: EstablishingSiteNetworks, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: , DetailsLevel: INFO
+2026-03-16T18:32:45.0177215Z State: Starting, Action: StartingMsiContainer, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: , DetailsLevel: INFO
+2026-03-16T18:33:21.2473293Z State: Starting, Action: StartingSiteContainers, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: , DetailsLevel: INFO
+2026-03-16T18:33:21.2476539Z Container start method called.
+2026-03-16T18:33:21.2477525Z State: Starting, Action: PullingImage, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: Pulling image 10.1.0.4:13209/appsvc/node:20-lts_20260115.4.tuxprod for azappeqxshezlak6lk., DetailsLevel: INFO
+2026-03-16T18:33:21.2478962Z Establishing network.
+2026-03-16T18:33:21.2481780Z Pulling image: appsvc/node:20-lts_20260115.4.tuxprod.
+2026-03-16T18:33:22.1434065Z Image appsvc/node:20-lts_20260115.4.tuxprod is pulled from registry 10.1.0.4:13209
+2026-03-16T18:33:22.1438240Z Container is starting.
+2026-03-16T18:33:22.1441409Z State: Starting, Action: MountingVolumes, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: Mounting volumes for azappeqxshezlak6lk., DetailsLevel: INFO
+2026-03-16T18:33:22.1444012Z Establishing user namespace if not established already.
+2026-03-16T18:33:22.1445764Z Establishing network if not established already.
+2026-03-16T18:33:22.1448339Z Mounting volumes.
+2026-03-16T18:33:22.1453477Z Nested mountpoint site/wwwroot
+2026-03-16T18:33:22.1793176Z Nested mountpoint volatile/logs
+2026-03-16T18:33:22.2531637Z Nested mountpoint 
+2026-03-16T18:33:22.4569046Z Nested mountpoint 
+2026-03-16T18:33:23.0583768Z Nested mountpoint 
+2026-03-16T18:33:23.1407676Z Nested mountpoint 
+2026-03-16T18:33:25.2306910Z State: Starting, Action: CreatingContainer, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: Finished pulling container image and mounting volumes for azappeqxshezlak6lk. Allocatinng the rest of the container resources to finish container creation., DetailsLevel: INFO
+2026-03-16T18:33:25.2343524Z Creating container.
+2026-03-16T18:33:25.2345243Z Creating pipes for streaming container io.
+2026-03-16T18:33:25.2346999Z Creating stdout named pipe at /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stdout_ca9d7edf201c4d8990eaa9caf61aca6a.
+2026-03-16T18:33:25.2450356Z Successfully created stdout named pipe at: /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stdout_ca9d7edf201c4d8990eaa9caf61aca6a.
+2026-03-16T18:33:25.2453160Z Opening named pipe /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stdout_ca9d7edf201c4d8990eaa9caf61aca6a for reading in non-blocking mode.
+2026-03-16T18:33:25.2455682Z Successfully opened named pipe: /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stdout_ca9d7edf201c4d8990eaa9caf61aca6a.
+2026-03-16T18:33:25.2457058Z Successfully removed non-blocking flag from /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stdout_ca9d7edf201c4d8990eaa9caf61aca6a.
+2026-03-16T18:33:25.2459297Z Creating stderr named pipe at /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stderr_bab63efd442149328473f5aa9eab7d76.
+2026-03-16T18:33:25.2461517Z Successfully created stderr named pipe at: /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stderr_bab63efd442149328473f5aa9eab7d76.
+2026-03-16T18:33:25.2462920Z Opening named pipe /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stderr_bab63efd442149328473f5aa9eab7d76 for reading in non-blocking mode.
+2026-03-16T18:33:25.2464597Z Successfully opened named pipe: /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stderr_bab63efd442149328473f5aa9eab7d76.
+2026-03-16T18:33:25.2466026Z Successfully removed non-blocking flag from /podr/container/pipe/e02644e8eb0b_azappeqxshezlak6lk/stderr_bab63efd442149328473f5aa9eab7d76.
+2026-03-16T18:33:25.2468042Z Creating container with image: appsvc/node:20-lts_20260115.4.tuxprod from registry: 10.1.0.4:13209 and fully qualified image name: 10.1.0.4:13209/appsvc/node:20-lts_20260115.4.tuxprod
+2026-03-16T18:33:26.6529716Z Starting container: e02644e8eb0b_azappeqxshezlak6lk.
+2026-03-16T18:33:26.7396485Z Starting watchers and probes.
+2026-03-16T18:33:26.7601665Z Starting metrics collection.
+2026-03-16T18:33:26.7619466Z Container is running.
+2026-03-16T18:33:26.7621181Z State: Starting, Action: CreatingContainer, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: Container azappeqxshezlak6lk successfully created and is running., DetailsLevel: INFO
+2026-03-16T18:33:26.8478429Z Container start method finished after 5599 ms.
+2026-03-16T18:33:26.8542639Z State: Starting, Action: InitiatingSiteWarmUpProbe, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: Container azappeqxshezlak6lk successfully created and is running., DetailsLevel: INFO
+2026-03-16T18:33:26.8763521Z State: Starting, Action: WaitingForSiteWarmUpProbeSuccess, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: Pinging warmup path to ensure container is ready to receive requests., DetailsLevel: INFO
+2026-03-16T18:33:44.0663181Z Container has finished running with exit code: 1.
+2026-03-16T18:33:44.0705598Z Container is terminating. Grace period: 5 seconds.
+2026-03-16T18:33:44.0828530Z Stop and delete container. Retry count = 0
+2026-03-16T18:33:44.0850624Z Stopping container: e02644e8eb0b_azappeqxshezlak6lk.
+2026-03-16T18:33:44.1198997Z Deleting container: e02644e8eb0b_azappeqxshezlak6lk. Retry count = 0
+2026-03-16T18:33:44.2716238Z Container spec TerminationMessagePolicy  path 
+2026-03-16T18:33:44.2738782Z Container is terminated. Total time elapsed: 201 ms.
+2026-03-16T18:33:44.2741350Z Site container: azappeqxshezlak6lk terminated during site startup.
+2026-03-16T18:33:44.2779107Z State: Stopping, Action: CancellingStartup, LastError: , LastErrorTimestamp: 01/01/0001 00:00:00, LastErrorDetails: , Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:33:44.2914654Z Site startup probe failed after 17.3684169 seconds.
+2026-03-16T18:33:44.3619558Z State: Stopping, Action: CancellingStartup, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:33:44.3769133Z Failed to start site. Revert by stopping site.
+2026-03-16T18:33:44.3825270Z State: Stopping, Action: StoppingSite, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:33:44.3863293Z State: Stopping, Action: StoppingSiteContainers, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:33:44.3872607Z Site: azappeqxshezlak6lk stopped.
+2026-03-16T18:33:44.3951468Z State: Stopping, Action: UnmountingVolumes, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:33:44.8456945Z Site container: azappeqxshezlak6lk_managedIdentity terminated during site startup.
+2026-03-16T18:33:44.8468516Z State: Stopping, Action: UnmountingVolumes, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:33:44.8662541Z State: Stopping, Action: StoppingSiteNetworks, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:33:45.1828422Z State: Stopped, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 03/16/2026 18:33:45 (UTC), DetailsLevel: ERR
+2026-03-16T18:33:45.2591865Z State: Stopped, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 03/16/2026 18:33:45 (UTC), DetailsLevel: ERR
+2026-03-16T18:33:51.0205515Z State: Starting, Action: EstablishingSiteNetworks, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 03/16/2026 18:33:45 (UTC), DetailsLevel: ERR
+2026-03-16T18:33:51.7174666Z State: Starting, Action: StartingMsiContainer, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 03/16/2026 18:33:45 (UTC), DetailsLevel: ERR
+2026-03-16T18:33:54.8852029Z State: Starting, Action: StartingSiteContainers, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 03/16/2026 18:33:45 (UTC), DetailsLevel: ERR
+2026-03-16T18:33:54.8874209Z Container start method called.
+2026-03-16T18:33:54.8894923Z State: Starting, Action: PullingImage, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Pulling image 10.1.0.4:13209/appsvc/node:20-lts_20260115.4.tuxprod for azappeqxshezlak6lk., DetailsLevel: INFO
+2026-03-16T18:33:54.8903388Z Establishing network.
+2026-03-16T18:33:54.8920324Z Pulling image: appsvc/node:20-lts_20260115.4.tuxprod.
+2026-03-16T18:33:55.0194326Z Container is starting.
+2026-03-16T18:33:55.0195783Z State: Starting, Action: MountingVolumes, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Mounting volumes for azappeqxshezlak6lk., DetailsLevel: INFO
+2026-03-16T18:33:55.0197524Z Establishing user namespace if not established already.
+2026-03-16T18:33:55.0199048Z Establishing network if not established already.
+2026-03-16T18:33:55.0200707Z Mounting volumes.
+2026-03-16T18:33:55.0206542Z Nested mountpoint site/wwwroot
+2026-03-16T18:33:55.0328134Z Nested mountpoint volatile/logs
+2026-03-16T18:33:55.0414130Z Nested mountpoint 
+2026-03-16T18:33:55.0424171Z Nested mountpoint 
+2026-03-16T18:33:55.0979802Z Nested mountpoint 
+2026-03-16T18:33:55.0988941Z Nested mountpoint 
+2026-03-16T18:33:55.3817548Z State: Starting, Action: CreatingContainer, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Finished pulling container image and mounting volumes for azappeqxshezlak6lk. Allocatinng the rest of the container resources to finish container creation., DetailsLevel: INFO
+2026-03-16T18:33:55.3831885Z Creating container.
+2026-03-16T18:33:55.3833523Z Creating pipes for streaming container io.
+2026-03-16T18:33:55.3834708Z Creating stdout named pipe at /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stdout_c9848614af5b48c2b1b6c00309efea07.
+2026-03-16T18:33:55.3837823Z Successfully created stdout named pipe at: /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stdout_c9848614af5b48c2b1b6c00309efea07.
+2026-03-16T18:33:55.3845245Z Opening named pipe /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stdout_c9848614af5b48c2b1b6c00309efea07 for reading in non-blocking mode.
+2026-03-16T18:33:55.3855225Z Successfully opened named pipe: /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stdout_c9848614af5b48c2b1b6c00309efea07.
+2026-03-16T18:33:55.3859027Z Successfully removed non-blocking flag from /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stdout_c9848614af5b48c2b1b6c00309efea07.
+2026-03-16T18:33:55.3862685Z Creating stderr named pipe at /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stderr_84d46a360bb14d9fa12baaf3919e9860.
+2026-03-16T18:33:55.3864855Z Successfully created stderr named pipe at: /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stderr_84d46a360bb14d9fa12baaf3919e9860.
+2026-03-16T18:33:55.3867351Z Opening named pipe /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stderr_84d46a360bb14d9fa12baaf3919e9860 for reading in non-blocking mode.
+2026-03-16T18:33:55.3869382Z Successfully opened named pipe: /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stderr_84d46a360bb14d9fa12baaf3919e9860.
+2026-03-16T18:33:55.3880721Z Successfully removed non-blocking flag from /podr/container/pipe/2df19b81541e_azappeqxshezlak6lk/stderr_84d46a360bb14d9fa12baaf3919e9860.
+2026-03-16T18:33:55.3884188Z Creating container with image: appsvc/node:20-lts_20260115.4.tuxprod from registry: 10.1.0.4:13209 and fully qualified image name: 10.1.0.4:13209/appsvc/node:20-lts_20260115.4.tuxprod
+2026-03-16T18:33:56.0109386Z Starting container: 2df19b81541e_azappeqxshezlak6lk.
+2026-03-16T18:33:56.0500399Z Starting watchers and probes.
+2026-03-16T18:33:56.0518836Z Starting metrics collection.
+2026-03-16T18:33:56.0527440Z Container is running.
+2026-03-16T18:33:56.0528700Z State: Starting, Action: CreatingContainer, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Container azappeqxshezlak6lk successfully created and is running., DetailsLevel: INFO
+2026-03-16T18:33:56.0795051Z Container start method finished after 1190 ms.
+2026-03-16T18:33:56.0804465Z State: Starting, Action: InitiatingSiteWarmUpProbe, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Container azappeqxshezlak6lk successfully created and is running., DetailsLevel: INFO
+2026-03-16T18:33:56.0804768Z State: Starting, Action: WaitingForSiteWarmUpProbeSuccess, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Pinging warmup path to ensure container is ready to receive requests., DetailsLevel: INFO
+2026-03-16T18:34:07.5178120Z Container has finished running with exit code: 1.
+2026-03-16T18:34:07.5182486Z Container is terminating. Grace period: 5 seconds.
+2026-03-16T18:34:07.5208710Z Stop and delete container. Retry count = 0
+2026-03-16T18:34:07.5215095Z Stopping container: 2df19b81541e_azappeqxshezlak6lk.
+2026-03-16T18:34:07.5717989Z Deleting container: 2df19b81541e_azappeqxshezlak6lk. Retry count = 0
+2026-03-16T18:34:07.7305208Z Container spec TerminationMessagePolicy  path 
+2026-03-16T18:34:07.7308238Z Container is terminated. Total time elapsed: 212 ms.
+2026-03-16T18:34:07.7309634Z Site container: azappeqxshezlak6lk terminated during site startup.
+2026-03-16T18:34:07.7311298Z State: Stopping, Action: CancellingStartup, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:33:44, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:34:07.7360245Z Site startup probe failed after 11.6513501 seconds.
+2026-03-16T18:34:07.8280254Z State: Stopping, Action: CancellingStartup, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:34:07, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:34:07.8369757Z Failed to start site. Revert by stopping site.
+2026-03-16T18:34:07.8461937Z State: Stopping, Action: StoppingSite, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:34:07, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:34:07.8469457Z State: Stopping, Action: StoppingSiteContainers, LastError: ContainerTimeout, LastErrorTimestamp: 03/16/2026 18:34:07, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: azappeqxshezlak6lk terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-03-16T18:34:07.8470274Z Site: azappeqxshezlak6lk stopped.

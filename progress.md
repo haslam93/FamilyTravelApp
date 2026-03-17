@@ -34,12 +34,12 @@ ms.date: 2026-03-09
 - [x] Implement PIN-based gate middleware
 - [x] Add Framer Motion page transitions and micro-interactions
 
-## Phase 4 — TripIt Integration
+## Phase 4 — TripIt Integration (REMOVED)
 
-- [x] Set up TripIt OAuth 1.0a client
-- [x] Build sync API route (`api/tripit/sync`)
-- [x] Create "Sync from TripIt" button on dashboard
-- [x] Map TripIt objects to database models
+- [x] ~~Set up TripIt OAuth 1.0a client~~ *Removed — TripIt public API shut down*
+- [x] ~~Build sync API route (`api/tripit/sync`)~~ *Removed*
+- [x] ~~Create "Sync from TripIt" button on dashboard~~ *Removed*
+- [x] ~~Map TripIt objects to database models~~ *Removed*
 
 ## Phase 5 — Flight Tracking
 
@@ -101,10 +101,11 @@ ms.date: 2026-03-09
 - [x] Update CD workflow with infrastructure provisioning via Bicep
 - [x] Write deployment instructions (DEPLOY.md) for azd and az cli
 - [x] Parameterize resource group name for user customization
-- [ ] Configure Azure Managed Identity (federated credentials for GitHub Actions)
-- [ ] Provision Azure resources (run azd up or az deployment sub create)
+- [x] Configure Azure Managed Identity (federated credentials for GitHub Actions)
+- [x] Provision Azure resources (az deployment sub create)
+- [x] Deploy app to Azure App Service (hammadtravel.azurewebsites.net)
+- [x] Verify end-to-end deployment
 - [ ] Configure CNAME in GoDaddy (the user will do this manually)
-- [ ] Verify end-to-end deployment
 
 ## Phase 12 — PWA and Polish
 
@@ -112,6 +113,25 @@ ms.date: 2026-03-09
 - [ ] Run Lighthouse audit and optimize
 - [ ] Test on mobile devices
 - [ ] Final UI polish and animation tuning
+
+## Phase 13 — Post-deployment fixes
+
+- [x] Fix broken Unsplash image URLs (Hyderabad, Cairo, Makkah — returned 404)
+- [x] Rewrite CI/CD workflow to use `az webapp deploy --type zip` instead of `azure/webapps-deploy`
+- [x] Add PostgreSQL auto-start check to CI/CD pipeline
+- [x] Add deployment health-check verification step
+- [x] Update all documentation (README, DEPLOY, ARCHITECTURE, progress)
+
+## Phase 14 — UI Rethink and Full CRUD
+
+- [x] Remove TripIt integration (API shut down — deleted client and sync route)
+- [x] Fix Google Calendar OAuth flow (created `/api/auth/google/start` route)
+- [x] Redesign dashboard (floating emojis, gradient hero, family avatars, quick actions)
+- [x] Redesign trip detail page (Edit Trip modal, Edit Flight modal, add/edit/delete flights, gradient stats)
+- [x] Rewrite flights page with Add/Edit/Delete modals and enhanced route visualization
+- [x] Rewrite places page with Add/Edit/Delete modals and kid-friendly toggle
+- [x] Rewrite documents page with Add/Edit modal and upload button
+- [x] Verify build compiles and passes TypeScript checks
 
 ## Notes
 
@@ -123,4 +143,8 @@ ms.date: 2026-03-09
 >
 > **Session 3**: Installed @dnd-kit packages for drag-and-drop. Created comprehensive seed data script (prisma/seed.ts) with both trips fully populated. Built sortable activity list component with drag-and-drop reordering. Created Google Calendar bi-directional sync API routes (push/pull). Built nearby recommendations page with Google Places API, city selector, category filters, kid-friendly/open-now toggles. Configured PWA with manual service worker (offline page, cache-first strategy). Added Discover page to sidebar and bottom nav. Build compiles successfully with 26 routes.
 >
-> **Session 3 (continued)**: Created full Azure Bicep infrastructure: main.bicep (subscription-scoped with parameterized resource group name), main.parameters.json (azd-compatible), and four modules (identity, postgres, storage, appservice). Created azure.yaml for azd workflows. Updated GitHub Actions CD workflow with infrastructure provisioning job (Bicep deployment), proper standalone packaging, Prisma migration step, and workflow_dispatch for manual infra deployments. Wrote comprehensive DEPLOY.md with step-by-step instructions for both azd and az cli deployment, OIDC setup, and troubleshooting. Build compiles successfully with 26 routes.
+> **Session 3 (continued — deployment)**: Deployed app to Azure. App name set to `hammadtravel` at `https://hammadtravel.azurewebsites.net`. Resource group `rg-familytravelapp`, location `swedencentral`. Used `az deployment sub create` for provisioning and `az webapp deploy --type zip` for deployment. Key discoveries: WEBSITE_RUN_FROM_PACKAGE must NOT be set; Oryx must be disabled (ENABLE_ORYX_BUILD=false, SCM_DO_BUILD_DURING_DEPLOYMENT=false); startup command is `node server.js`. Created README.md and ARCHITECTURE.md. Pushed to GitHub at https://github.com/haslam93/FamilyTravelApp.
+>
+> **Session 3 (fixes)**: Fixed 3 broken Unsplash image URLs (Hyderabad photo-1572638075568 → photo-1599661046289, Cairo photo-1539768942893 → photo-1553913861, Makkah photo-1591604129939 → photo-1580418827493). Rewrote CI/CD workflow: replaced `azure/webapps-deploy@v3` with `az webapp deploy --type zip`, added PostgreSQL auto-start, deployment health-check, and proper zip packaging via tar. Updated all documentation.
+>
+> **Session 4 (UI rethink + CRUD)**: Removed TripIt integration entirely (API shut down per help.tripit.com). Fixed Google Calendar OAuth — settings page was redirecting to callback URL instead of Google consent screen; created new `/api/auth/google/start` route. Full UI redesign across all pages: dashboard with floating emojis, gradient hero card, animated family avatars, 6 quick action buttons; trip detail page with Edit Trip modal (name, dates, travelers, cities), Edit Flight modal (full flight form), inline add/edit/delete for flights; flights page with full CRUD modals; places page with Add/Edit/Delete modals and kid-friendly toggle; documents page with Add/Edit modal. Fixed trailing code in trip page, TypeScript `type: "spring"` narrowing issues. Build compiles cleanly.

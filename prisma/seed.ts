@@ -46,7 +46,7 @@ async function main() {
       cities: ["Hyderabad", "Delhi"],
       countries: ["India"],
       coverImage:
-        "https://images.unsplash.com/photo-1572638075568-07d4a3a77375?w=1200&q=80",
+        "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=1200&q=80",
       description:
         "Solo exploration of Hyderabad and Delhi — heritage, food, and culture.",
       travelers: 1,
@@ -463,7 +463,7 @@ async function main() {
       cities: ["Cairo", "Sharm El Sheikh", "Makkah", "Madinah"],
       countries: ["Egypt", "Saudi Arabia"],
       coverImage:
-        "https://images.unsplash.com/photo-1539768942893-daf53e736b68?w=1200&q=80",
+        "https://images.unsplash.com/photo-1553913861-c0fddf2619ee?w=1200&q=80",
       description:
         "Family adventure through Egypt (pyramids & Red Sea) and Saudi Arabia for Umrah — traveling with 3 kids (ages 5, 3, and under 2).",
       travelers: 5,
