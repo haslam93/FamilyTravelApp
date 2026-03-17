@@ -263,12 +263,24 @@ jobs:
 
       - name: Ensure managed identity database principal exists
         run: |
+          SQL_CREATE_PRINCIPAL=$(cat <<'SQL'
+          DO $do$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${{ steps.postgres.outputs.managed_identity_name }}') THEN
+              PERFORM * FROM pgaadauth_create_principal('${{ steps.postgres.outputs.managed_identity_name }}', false, false);
+            END IF;
+          END
+          $do$;
+          SQL
+          )
+
           for attempt in {1..10}; do
             PG_TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
             export PGPASSWORD="$PG_TOKEN"
 
             if psql "host=${{ steps.postgres.outputs.host }} port=5432 dbname=postgres user=${{ steps.postgres.outputs.admin_name }} sslmode=require" \
-              -c "DO \\$\\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${{ steps.postgres.outputs.managed_identity_name }}') THEN PERFORM * FROM pgaadauth_create_principal('${{ steps.postgres.outputs.managed_identity_name }}', false, false); END IF; END \\$\\$;"
+              -v ON_ERROR_STOP=1 \
+              -c "$SQL_CREATE_PRINCIPAL"
             then
               exit 0
             fi
@@ -282,17 +294,23 @@ jobs:
 
       - name: Grant app database permissions to managed identity
         run: |
+          SQL_GRANT_PERMISSIONS=$(cat <<'SQL'
+          GRANT CONNECT ON DATABASE "${{ steps.postgres.outputs.database }}" TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          GRANT USAGE ON SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO "${{ steps.postgres.outputs.managed_identity_name }}";
+          SQL
+          )
+
           for attempt in {1..10}; do
             PG_TOKEN=$(az account get-access-token --resource-type oss-rdbms --query accessToken -o tsv)
             export PGPASSWORD="$PG_TOKEN"
 
             if psql "host=${{ steps.postgres.outputs.host }} port=5432 dbname=${{ steps.postgres.outputs.database }} user=${{ steps.postgres.outputs.admin_name }} sslmode=require" \
-              -c "GRANT CONNECT ON DATABASE \"${{ steps.postgres.outputs.database }}\" TO \"${{ steps.postgres.outputs.managed_identity_name }}\";" \
-              -c "GRANT USAGE ON SCHEMA public TO \"${{ steps.postgres.outputs.managed_identity_name }}\";" \
-              -c "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO \"${{ steps.postgres.outputs.managed_identity_name }}\";" \
-              -c "GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO \"${{ steps.postgres.outputs.managed_identity_name }}\";" \
-              -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \"${{ steps.postgres.outputs.managed_identity_name }}\";" \
-              -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO \"${{ steps.postgres.outputs.managed_identity_name }}\";"
+              -v ON_ERROR_STOP=1 \
+              -c "$SQL_GRANT_PERMISSIONS"
             then
               exit 0
             fi
