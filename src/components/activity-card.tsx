@@ -2,8 +2,10 @@
 
 import { motion } from "framer-motion";
 import { Check, Clock, SkipForward, Circle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { ACTIVITY_TYPE_EMOJI } from "@/lib/constants";
+
+const subscribeToHydration = () => () => {};
 
 interface ActivityCardProps {
   activity: {
@@ -40,14 +42,10 @@ function formatTime(dateStr: string | null): string {
 }
 
 export function ActivityCard({ activity, index, isLast, onStatusChange }: ActivityCardProps) {
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const statusConfig = STATUS_CONFIG[activity.status] || STATUS_CONFIG.PLANNED;
   const StatusIcon = statusConfig.icon;
   const emoji = ACTIVITY_TYPE_EMOJI[activity.type] || "📌";
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const nextStatus = () => {
     const currentIdx = STATUS_CYCLE.indexOf(activity.status);

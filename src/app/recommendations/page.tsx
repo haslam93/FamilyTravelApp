@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import {
   Search,
   MapPin,
@@ -10,7 +11,6 @@ import {
   Navigation,
   Plus,
   Sparkles,
-  Filter,
   Loader2,
 } from "lucide-react";
 import { useState, useCallback } from "react";
@@ -285,10 +285,13 @@ export default function RecommendationsPage() {
                     {/* Photo or Placeholder */}
                     <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-ocean/20 to-sky/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {place.photoReference ? (
-                        <img
+                        <Image
                           src={`https://maps.googleapis.com/maps/api/place/photo?maxwidth=200&photo_reference=${place.photoReference}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
                           alt={place.name}
+                          width={64}
+                          height={64}
                           className="w-full h-full object-cover"
+                          unoptimized
                         />
                       ) : (
                         <span className="text-2xl">{typeInfo?.emoji || "📍"}</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Plane, ArrowRight, Clock, MapPin } from "lucide-react";
+import { Plane, Clock } from "lucide-react";
 import Image from "next/image";
 import { FLIGHT_STATUS_CONFIG, getAirlineLogo } from "@/lib/constants";
 

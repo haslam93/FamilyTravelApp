@@ -17,7 +17,6 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import Image from "next/image";
 
 const NAV_ITEMS = [
   { href: "/", icon: Home, label: "Home", emoji: "🏠" },

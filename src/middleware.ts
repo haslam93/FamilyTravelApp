@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createHash } from "crypto";
 
 // ─── PIN Protection Middleware ──────────────────────────────────────────────
 // Simple PIN-based gate for the family app. No user accounts needed.

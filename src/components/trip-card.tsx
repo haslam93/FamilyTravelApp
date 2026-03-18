@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, MapPin, Users, Plane } from "lucide-react";
+import { Calendar, MapPin, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -42,7 +42,6 @@ export function TripCard({
   startDate,
   endDate,
   cities,
-  countries,
   coverImage,
   travelers,
   activitiesComplete,

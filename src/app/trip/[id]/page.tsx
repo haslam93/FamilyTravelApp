@@ -17,7 +17,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/app-shell";
 import { SortableActivityList } from "@/components/sortable-activity-list";
 import { AddActivityModal } from "@/components/add-activity-modal";
@@ -92,6 +92,8 @@ interface FlightData {
   terminal: string | null;
   gate: string | null;
 }
+
+const subscribeToHydration = () => () => {};
 
 interface StayData {
   id: string;
@@ -530,7 +532,7 @@ export default function TripDetailPage() {
   const params = useParams();
   const tripId = params.id as string;
   const [trip, setTrip] = useState<TripData | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -540,10 +542,6 @@ export default function TripDetailPage() {
   const [showEditFlight, setShowEditFlight] = useState(false);
   const [editingFlight, setEditingFlight] = useState<FlightData | null>(null);
   const [activeTab, setActiveTab] = useState<"schedule" | "places" | "flights" | "stays" | "docs">("schedule");
-
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const loadTrip = useCallback(async () => {
     setIsLoading(true);

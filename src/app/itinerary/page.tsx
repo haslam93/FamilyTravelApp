@@ -4,9 +4,22 @@ import { motion } from "framer-motion";
 import { CalendarDays, ChevronRight, MapPin, Clock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CITY_IMAGES, TRIP_VISUALS, ACTIVITY_TYPE_EMOJI } from "@/lib/constants";
+
+let hydratedCurrentTime: number | null = null;
+
+const subscribeToCurrentTime = (callback: () => void) => {
+  hydratedCurrentTime = Date.now();
+  const timeoutId = window.setTimeout(callback, 0);
+
+  return () => {
+    window.clearTimeout(timeoutId);
+  };
+};
+
+const getCurrentTimeSnapshot = () => hydratedCurrentTime;
 
 // ─── Demo Data ───────────────────────────────────────────────────────────────
 
@@ -56,11 +69,11 @@ const itemVariants = {
 };
 
 export default function ItineraryPage() {
-  const [currentTime, setCurrentTime] = useState<number | null>(null);
-
-  useEffect(() => {
-    setCurrentTime(Date.now());
-  }, []);
+  const currentTime = useSyncExternalStore(
+    subscribeToCurrentTime,
+    getCurrentTimeSnapshot,
+    () => null
+  );
 
   return (
     <AppShell>
