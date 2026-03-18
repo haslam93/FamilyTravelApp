@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getFallbackTrip } from "@/lib/fallback-data";
+import { getStoredTrip, upsertTripOverride } from "@/lib/trip-store";
 
 // GET /api/trips/[id] — Get a single trip with all related data
 export async function GET(
@@ -41,7 +41,7 @@ export async function GET(
   } catch (error) {
     console.error("Failed to fetch trip:", error);
     const { id } = await params;
-    const fallbackTrip = getFallbackTrip(id);
+    const fallbackTrip = await getStoredTrip(id);
 
     if (!fallbackTrip) {
       return NextResponse.json({ error: "Failed to fetch trip" }, { status: 500 });
@@ -60,10 +60,10 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params;
-    const body = await req.json();
+  const { id } = await params;
+  const body = await req.json();
 
+  try {
     const trip = await prisma.trip.update({
       where: { id },
       data: {
@@ -83,7 +83,46 @@ export async function PATCH(
     return NextResponse.json(trip);
   } catch (error) {
     console.error("Failed to update trip:", error);
-    return NextResponse.json({ error: "Failed to update trip" }, { status: 500 });
+
+    const fallbackTrip = await getStoredTrip(id);
+
+    if (!fallbackTrip) {
+      return NextResponse.json({ error: "Failed to update trip" }, { status: 500 });
+    }
+
+    const updatedTrip = {
+      ...fallbackTrip,
+      ...(body.name !== undefined && { name: body.name }),
+      ...(body.type !== undefined && { type: body.type }),
+      ...(body.status !== undefined && { status: body.status }),
+      ...(body.startDate !== undefined && { startDate: body.startDate }),
+      ...(body.endDate !== undefined && { endDate: body.endDate }),
+      ...(body.cities !== undefined && { cities: body.cities }),
+      ...(body.countries !== undefined && { countries: body.countries }),
+      ...(body.coverImage !== undefined && { coverImage: body.coverImage }),
+      ...(body.description !== undefined && { description: body.description }),
+      ...(body.travelers !== undefined && { travelers: body.travelers }),
+    };
+
+    await upsertTripOverride({
+      id,
+      name: updatedTrip.name,
+      type: updatedTrip.type,
+      status: updatedTrip.status,
+      startDate: updatedTrip.startDate,
+      endDate: updatedTrip.endDate,
+      cities: updatedTrip.cities,
+      countries: updatedTrip.countries,
+      coverImage: updatedTrip.coverImage,
+      description: updatedTrip.description,
+      travelers: updatedTrip.travelers,
+    });
+
+    return NextResponse.json(updatedTrip, {
+      headers: {
+        "x-family-travel-data-source": "fallback",
+      },
+    });
   }
 }
 

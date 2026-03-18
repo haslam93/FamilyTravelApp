@@ -79,7 +79,7 @@ ms.date: 2026-03-09
 ## Phase 9 — Document Vault
 
 - [ ] Set up Azure Blob Storage with Managed Identity access
-- [ ] Build upload API with signed URLs
+- [~] Build upload API with signed URLs
 - [x] Create document management UI (categorized by type)
 - [x] Add per-trip document section
 
@@ -144,6 +144,9 @@ ms.date: 2026-03-09
 - [x] Migrate places page to real CRUD data with correct Google Maps links
 - [x] Add dedicated stays page and navigation
 - [x] Apply targeted visual polish after persistence fixes
+- [x] Surface trip-scoped places directly inside trip detail tabs
+- [x] Refresh trip and document experiences with a bolder kid-friendly theme
+- [x] Persist trip edits when fallback data is active
 
 ## Notes
 
@@ -172,3 +175,9 @@ ms.date: 2026-03-09
 > **Session 7 (deployment recovery)**: Investigated the live Azure site with Playwright and found all Prisma-backed read APIs returning 500 while static routes still rendered. Added a shared fallback travel dataset for trips, flights, stays, and places so the app remains usable when the database/schema is unavailable, fixed missing PWA icon assets, and updated the deploy workflow to run `prisma db push` when no migrations are present and seed only when the target database is empty.
 >
 > **Session 8 (hydration fix)**: Traced the remaining fresh-load trip detail hydration error to client state being initialized from the dynamic route param during render. Updated the trip detail page to start with a null trip state and let the existing fetch path populate data after hydration so server and client markup stay aligned.
+>
+> **Session 9 (CI + production verification)**: Fixed GitHub Actions build blockers caused by unused imports and hydration-related lint rules, hardened the deploy-time Prisma step with a proper Node setup plus `npm ci`/`prisma generate`, and verified the live trip, dashboard, and places pages after the successful deployment on commit `47a16c7`.
+>
+> **Session 10 (trip places + real uploads)**: Replaced the demo-only document vault with a real upload flow backed by multipart API routes plus a local JSON/file fallback store, upgraded trip detail to show trip-scoped places and richer trip documents directly inside the trip, and added derived stay cards when only hotel check-in activities exist.
+>
+> **Session 11 (trip edit persistence)**: Fixed trip editing so name and detail changes persist even when Prisma-backed trip routes fall back to local data. Added a file-backed trip override store, applied those overrides to both trip list and trip detail APIs, and normalized the trip edit modal date fields so existing values render correctly in the browser.

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { FALLBACK_TRIPS } from "@/lib/fallback-data";
+import { getStoredTrips } from "@/lib/trip-store";
 
 // GET /api/trips — List all trips
 export async function GET() {
@@ -26,7 +26,7 @@ export async function GET() {
     return NextResponse.json(trips);
   } catch (error) {
     console.error("Failed to fetch trips:", error);
-    return NextResponse.json(FALLBACK_TRIPS, {
+    return NextResponse.json(await getStoredTrips(), {
       headers: {
         "x-family-travel-data-source": "fallback",
       },

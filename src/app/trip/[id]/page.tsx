@@ -13,6 +13,10 @@ import {
   Trash2,
   Save,
   X,
+  ExternalLink,
+  Download,
+  Eye,
+  Upload,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -56,6 +60,13 @@ interface Place {
   category: string;
   visited: boolean;
   photoUrl: string | null;
+  address?: string | null;
+  city?: string;
+  country?: string;
+  notes?: string | null;
+  kidFriendly?: boolean;
+  googleMapsUrl?: string | null;
+  tripDayId?: string | null;
 }
 
 interface TripData {
@@ -113,6 +124,11 @@ interface DocData {
   id: string;
   name: string;
   type: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  notes?: string | null;
 }
 
 // ─── Demo data ──────────────────────────────────────────────────────────────
@@ -229,6 +245,80 @@ const DEMO_TRIPS: Record<string, TripData> = {
     ],
   },
 };
+
+function mergePlaces(places: Place[]) {
+  const seen = new Set<string>();
+
+  return places.filter((place) => {
+    const key = place.id || `${place.name}-${place.city || "unknown"}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeDocuments(documents: DocData[]) {
+  const seen = new Set<string>();
+
+  return documents.filter((document) => {
+    const key = document.id || `${document.name}-${document.type}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function getDocumentVisual(type: string) {
+  switch (type) {
+    case "VISA":
+      return { emoji: "🛂", badge: "bg-sky-100 text-sky-700" };
+    case "PASSPORT":
+      return { emoji: "📕", badge: "bg-indigo-100 text-indigo-700" };
+    case "UMRAH_PERMIT":
+      return { emoji: "🕋", badge: "bg-violet-100 text-violet-700" };
+    case "FLIGHT_BOOKING":
+      return { emoji: "✈️", badge: "bg-cyan-100 text-cyan-700" };
+    case "HOTEL_BOOKING":
+      return { emoji: "🏨", badge: "bg-amber-100 text-amber-700" };
+    default:
+      return { emoji: "📄", badge: "bg-slate-100 text-slate-700" };
+  }
+}
+
+function deriveFallbackStays(days: TripDay[], tripEndDate: string): StayData[] {
+  const hotelCheckIns = days.flatMap((day, dayIndex) =>
+    day.activities
+      .filter((activity) => activity.type === "HOTEL_CHECKIN")
+      .map((activity, activityIndex) => ({ day, dayIndex, activity, activityIndex }))
+  );
+
+  return hotelCheckIns.map(({ day, dayIndex, activity, activityIndex }, index) => {
+    const nextCheckIn = hotelCheckIns[index + 1];
+    const hotelName = activity.notes?.trim() || activity.name.replace(/check-?in/i, "").trim() || `${day.city} Stay`;
+
+    return {
+      id: `derived-stay-${day.id}-${activityIndex}`,
+      hotelName,
+      address: null,
+      city: day.city,
+      country: day.country,
+      checkIn: activity.startTime || `${day.date}T15:00:00`,
+      checkOut: nextCheckIn?.activity.startTime || `${tripEndDate}T12:00:00`,
+      checkInLabel: null,
+      checkOutLabel: null,
+      confirmationCode: null,
+      guests: 1,
+    };
+  });
+}
 
 // ─── Edit Flight Modal ──────────────────────────────────────────────────────
 
@@ -441,10 +531,11 @@ function EditTripModal({
   onSave: (t: Partial<TripData>) => void;
   onClose: () => void;
 }) {
+  const normalizeDateInput = (value: string) => value.slice(0, 10);
   const [name, setName] = useState(trip.name);
   const [description, setDescription] = useState(trip.description || "");
-  const [startDate, setStartDate] = useState(trip.startDate);
-  const [endDate, setEndDate] = useState(trip.endDate);
+  const [startDate, setStartDate] = useState(normalizeDateInput(trip.startDate));
+  const [endDate, setEndDate] = useState(normalizeDateInput(trip.endDate));
   const [travelers, setTravelers] = useState(trip.travelers);
   const [cities, setCities] = useState(trip.cities.join(", "));
 
@@ -542,6 +633,8 @@ export default function TripDetailPage() {
   const [showEditFlight, setShowEditFlight] = useState(false);
   const [editingFlight, setEditingFlight] = useState<FlightData | null>(null);
   const [activeTab, setActiveTab] = useState<"schedule" | "places" | "flights" | "stays" | "docs">("schedule");
+  const [tripPlaces, setTripPlaces] = useState<Place[]>([]);
+  const [tripDocuments, setTripDocuments] = useState<DocData[]>([]);
 
   const loadTrip = useCallback(async () => {
     setIsLoading(true);
@@ -577,6 +670,66 @@ export default function TripDetailPage() {
 
       return Math.min(prev, Math.max(trip.days.length - 1, 0));
     });
+  }, [trip]);
+
+  useEffect(() => {
+    if (!trip) {
+      setTripPlaces([]);
+      setTripDocuments([]);
+      return;
+    }
+
+    const dayPlaces = trip.days.flatMap((day) =>
+      day.places.map((place) => ({
+        ...place,
+        city: place.city || day.city,
+        country: place.country || day.country,
+        tripDayId: place.tripDayId || day.id,
+      }))
+    );
+
+    setTripPlaces(mergePlaces(dayPlaces));
+    setTripDocuments(mergeDocuments(trip.documents));
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const placeResponses = await Promise.all(
+          trip.cities.map((city) => fetch(`/api/places?city=${encodeURIComponent(city)}`, { cache: "no-store" }))
+        );
+        const cityPlaces = (
+          await Promise.all(
+            placeResponses.map(async (response) => {
+              if (!response.ok) {
+                return [] as Place[];
+              }
+
+              return (await response.json()) as Place[];
+            })
+          )
+        ).flat();
+
+        const documentsResponse = await fetch(`/api/documents?tripId=${encodeURIComponent(trip.id)}`, {
+          cache: "no-store",
+        });
+        const documents = documentsResponse.ok ? ((await documentsResponse.json()) as DocData[]) : trip.documents;
+
+        if (!cancelled) {
+          setTripPlaces(mergePlaces([...dayPlaces, ...cityPlaces]));
+          setTripDocuments(mergeDocuments(documents));
+        }
+      } catch {
+        if (!cancelled) {
+          setTripPlaces(mergePlaces(dayPlaces));
+          setTripDocuments(mergeDocuments(trip.documents));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [trip]);
 
   const formatDate = useCallback(
@@ -749,12 +902,13 @@ export default function TripDetailPage() {
 
   const visuals = TRIP_VISUALS[trip.type];
   const currentDay = trip.days[selectedDay];
-  const stays = trip.stays ?? [];
+  const stays = (trip.stays && trip.stays.length > 0) ? trip.stays : deriveFallbackStays(trip.days, trip.endDate);
   const totalActivities = trip.days.reduce((sum, d) => sum + d.activities.length, 0);
   const doneActivities = trip.days.reduce(
     (sum, d) => sum + d.activities.filter((a) => a.status === "DONE").length,
     0
   );
+  const visitedPlaces = tripPlaces.filter((place) => place.visited).length;
 
   return (
     <AppShell>
@@ -843,7 +997,7 @@ export default function TripDetailPage() {
               { label: "Activities", value: totalActivities, emoji: "📋", color: "from-amber-400 to-orange-500" },
               { label: "Flights", value: trip.flights.length, emoji: "✈️", color: "from-coral to-sunset" },
               { label: "Stays", value: stays.length, emoji: "🏨", color: "from-indigo-400 to-violet-500" },
-              { label: "Docs", value: trip.documents.length, emoji: "📄", color: "from-emerald-400 to-teal-500" },
+              { label: "Docs", value: tripDocuments.length, emoji: "📄", color: "from-emerald-400 to-teal-500" },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -1089,6 +1243,11 @@ export default function TripDetailPage() {
                             <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-indigo-700">
                               {stay.city}
                             </span>
+                            {trip.stays?.length ? null : (
+                              <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                                derived from itinerary
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs font-semibold text-slate-500">
                             {formatDate(stay.checkIn, { month: "short", day: "numeric" }) || "..."}
@@ -1211,17 +1370,99 @@ export default function TripDetailPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="text-center py-16"
+                className="space-y-4"
               >
-                <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2.5, repeat: Infinity }} className="text-7xl mb-4">📍</motion.div>
-                <h3 className="text-lg font-bold text-slate-600">Explore Places</h3>
-                <p className="text-sm text-slate-400 mt-1">
-                  Visit the{" "}
-                  <Link href="/places" className="text-coral font-bold hover:underline">
-                    Places page
-                  </Link>{" "}
-                  to manage your saved places
-                </p>
+                <div className="rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(255,107,107,0.12),rgba(124,92,255,0.12))] p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Trip Places</p>
+                      <h3 className="mt-1 text-2xl font-black text-slate-800">Places connected to this trip</h3>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">
+                        {tripPlaces.length} saved place{tripPlaces.length === 1 ? "" : "s"} across {trip.cities.length} cit{trip.cities.length === 1 ? "y" : "ies"}.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                      <span className="rounded-full bg-white px-3 py-2 shadow-sm">{visitedPlaces} visited</span>
+                      <span className="rounded-full bg-white px-3 py-2 shadow-sm">{tripPlaces.length - visitedPlaces} planned</span>
+                    </div>
+                  </div>
+                </div>
+
+                {tripPlaces.length === 0 ? (
+                  <div className="text-center py-16 glass rounded-2xl">
+                    <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2.5, repeat: Infinity }} className="text-7xl mb-4">📍</motion.div>
+                    <h3 className="text-lg font-bold text-slate-600">No places attached yet</h3>
+                    <p className="text-sm text-slate-400 mt-1">Add places for any of this trip's cities and they will show up here.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {tripPlaces.map((place) => (
+                      <motion.div
+                        key={place.id}
+                        whileHover={{ y: -3 }}
+                        className="overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/85 shadow-[0_20px_40px_rgba(15,23,42,0.08)]"
+                      >
+                        <div className="flex gap-4 p-4">
+                          <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-[1.25rem] bg-slate-100">
+                            {place.photoUrl ? (
+                              <Image src={place.photoUrl} alt={place.name} fill className="object-cover" sizes="96px" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center bg-gradient-to-br from-coral/20 to-sunset/20 text-3xl">📍</div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="text-lg font-black text-slate-800">{place.name}</h4>
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-600">
+                                {place.category.replace(/_/g, " ")}
+                              </span>
+                              {place.kidFriendly && (
+                                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">
+                                  kid friendly
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-sm font-semibold text-slate-500">
+                              {[place.city, place.country].filter(Boolean).join(", ")}
+                            </p>
+                            {place.address && (
+                              <p className="mt-2 text-sm text-slate-500">{place.address}</p>
+                            )}
+                            {place.notes && (
+                              <p className="mt-2 text-sm text-slate-500">{place.notes}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+                          <span className={`rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] ${place.visited ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                            {place.visited ? "Visited" : "Planned"}
+                          </span>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/places`}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-slate-600 transition hover:bg-slate-200"
+                            >
+                              <Eye size={13} /> Manage
+                            </Link>
+                            {place.googleMapsUrl && (
+                              <a
+                                href={place.googleMapsUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white transition hover:bg-slate-800"
+                              >
+                                <ExternalLink size={13} /> Maps
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1232,29 +1473,86 @@ export default function TripDetailPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-3"
+                className="space-y-4"
               >
-                {trip.documents.length === 0 ? (
+                <div className="flex items-center justify-between rounded-[1.75rem] bg-[linear-gradient(135deg,rgba(16,185,129,0.12),rgba(34,211,238,0.12))] p-5">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">Trip Documents</p>
+                    <h3 className="mt-1 text-2xl font-black text-slate-800">Files attached to this trip</h3>
+                  </div>
+                  <Link
+                    href="/documents"
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white"
+                  >
+                    <Upload size={14} /> Manage Vault
+                  </Link>
+                </div>
+
+                {tripDocuments.length === 0 ? (
                   <div className="text-center py-16">
                     <div className="text-7xl mb-4">📄</div>
                     <p className="text-slate-400 font-bold">No documents yet</p>
                   </div>
                 ) : (
-                  trip.documents.map((doc) => (
+                  tripDocuments.map((doc) => {
+                    const visual = getDocumentVisual(doc.type);
+
+                    return (
                     <motion.div
                       key={doc.id}
                       whileHover={{ y: -2 }}
-                      className="glass rounded-2xl p-4 flex items-center gap-4"
+                      className="rounded-[1.5rem] border border-white/70 bg-white/85 p-4 shadow-[0_20px_40px_rgba(15,23,42,0.08)]"
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl shadow-md">
-                        {doc.type === "VISA" ? "🛂" : doc.type === "PASSPORT" ? "📕" : doc.type === "UMRAH_PERMIT" ? "🕌" : "📄"}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800">{doc.name}</p>
-                        <p className="text-xs text-slate-400 font-semibold">{doc.type.replace(/_/g, " ")}</p>
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-xl text-white shadow-md">
+                          {visual.emoji}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-black text-slate-800">{doc.name}</p>
+                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${visual.badge}`}>
+                              {doc.type.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          {doc.fileName && (
+                            <p className="mt-1 text-sm font-semibold text-slate-500">{doc.fileName}</p>
+                          )}
+                          {doc.notes && (
+                            <p className="mt-2 text-sm text-slate-500">{doc.notes}</p>
+                          )}
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {doc.fileUrl ? (
+                              <>
+                                <a
+                                  href={doc.fileUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-white"
+                                >
+                                  <Eye size={13} /> Preview
+                                </a>
+                                <a
+                                  href={doc.fileUrl}
+                                  download={doc.fileName || doc.name}
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-slate-600"
+                                >
+                                  <Download size={13} /> Download
+                                </a>
+                              </>
+                            ) : (
+                              <Link
+                                href="/documents"
+                                className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-slate-600"
+                              >
+                                <Eye size={13} /> Open Vault
+                              </Link>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
-                  ))
+                  );})
                 )}
               </motion.div>
             )}
