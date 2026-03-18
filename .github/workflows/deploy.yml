@@ -126,6 +126,28 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Start PostgreSQL server for what-if (if stopped)
+        run: |
+          PG_NAME=$(az postgres flexible-server list \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --query "[0].name" -o tsv 2>/dev/null || true)
+          if [ -n "$PG_NAME" ]; then
+            STATE=$(az postgres flexible-server show \
+              --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+              --name "$PG_NAME" \
+              --query "state" -o tsv)
+            if [ "$STATE" != "Ready" ]; then
+              echo "Starting PostgreSQL server $PG_NAME before what-if preview..."
+              az postgres flexible-server start \
+                --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+                --name "$PG_NAME"
+            else
+              echo "PostgreSQL server $PG_NAME is already running."
+            fi
+          else
+            echo "No PostgreSQL server found in ${{ vars.AZURE_RESOURCE_GROUP }}."
+          fi
+
       - name: Preview Azure Infrastructure (what-if)
         run: |
           az deployment sub what-if \
