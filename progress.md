@@ -170,3 +170,5 @@ ms.date: 2026-03-09
 > **Session 6 (UI migration completion)**: Replaced the remaining demo-backed dashboard, flights, and places views with API-backed implementations, added the dedicated stays page and navigation entries, and corrected place link generation so Google Maps actions use persisted place IDs or stable query URLs.
 >
 > **Session 7 (deployment recovery)**: Investigated the live Azure site with Playwright and found all Prisma-backed read APIs returning 500 while static routes still rendered. Added a shared fallback travel dataset for trips, flights, stays, and places so the app remains usable when the database/schema is unavailable, fixed missing PWA icon assets, and updated the deploy workflow to run `prisma db push` when no migrations are present and seed only when the target database is empty.
+>
+> **Session 8 (hydration fix)**: Traced the remaining fresh-load trip detail hydration error to client state being initialized from the dynamic route param during render. Updated the trip detail page to start with a null trip state and let the existing fetch path populate data after hydration so server and client markup stay aligned.

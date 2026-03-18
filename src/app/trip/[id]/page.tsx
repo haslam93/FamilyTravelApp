@@ -529,7 +529,7 @@ function EditTripModal({
 export default function TripDetailPage() {
   const params = useParams();
   const tripId = params.id as string;
-  const [trip, setTrip] = useState<TripData | null>(() => DEMO_TRIPS[tripId] ?? null);
+  const [trip, setTrip] = useState<TripData | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
