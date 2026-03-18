@@ -94,6 +94,8 @@ export default function DashboardPage() {
   const [trips, setTrips] = useState<TripSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentTimestamp, setCurrentTimestamp] = useState<number | null>(null);
+  const [todayLabel, setTodayLabel] = useState("");
 
   useEffect(() => {
     const loadTrips = async () => {
@@ -117,6 +119,18 @@ export default function DashboardPage() {
     void loadTrips();
   }, []);
 
+  useEffect(() => {
+    setCurrentTimestamp(Date.now());
+    setTodayLabel(
+      new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    );
+  }, []);
+
   const tripCards = trips.map((trip) => ({
     id: trip.id,
     name: trip.name,
@@ -136,7 +150,9 @@ export default function DashboardPage() {
 
   const upcomingFlights = trips
     .flatMap((trip) => trip.flights)
-    .filter((flight) => new Date(flight.scheduledDeparture).getTime() >= Date.now())
+    .filter(
+      (flight) => currentTimestamp !== null && new Date(flight.scheduledDeparture).getTime() >= currentTimestamp
+    )
     .sort(
       (left, right) =>
         new Date(left.scheduledDeparture).getTime() -
@@ -202,12 +218,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.6 }}
               >
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                {todayLabel || " "}
               </motion.p>
 
               <motion.div

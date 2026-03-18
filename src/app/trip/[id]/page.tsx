@@ -530,6 +530,7 @@ export default function TripDetailPage() {
   const params = useParams();
   const tripId = params.id as string;
   const [trip, setTrip] = useState<TripData | null>(() => DEMO_TRIPS[tripId] ?? null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -539,6 +540,10 @@ export default function TripDetailPage() {
   const [showEditFlight, setShowEditFlight] = useState(false);
   const [editingFlight, setEditingFlight] = useState<FlightData | null>(null);
   const [activeTab, setActiveTab] = useState<"schedule" | "places" | "flights" | "stays" | "docs">("schedule");
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const loadTrip = useCallback(async () => {
     setIsLoading(true);
@@ -575,6 +580,28 @@ export default function TripDetailPage() {
       return Math.min(prev, Math.max(trip.days.length - 1, 0));
     });
   }, [trip]);
+
+  const formatDate = useCallback(
+    (value: string, options: Intl.DateTimeFormatOptions) => {
+      if (!isHydrated) {
+        return "";
+      }
+
+      return new Date(value).toLocaleDateString("en-US", options);
+    },
+    [isHydrated]
+  );
+
+  const formatTime = useCallback(
+    (value: string, options: Intl.DateTimeFormatOptions) => {
+      if (!isHydrated) {
+        return "";
+      }
+
+      return new Date(value).toLocaleTimeString("en-US", options);
+    },
+    [isHydrated]
+  );
 
   const handleAddActivity = useCallback(async (activity: Omit<Activity, "id" | "sortOrder">) => {
     if (!trip || !trip.days[selectedDay]) return;
@@ -781,9 +808,9 @@ export default function TripDetailPage() {
               <div className="flex flex-wrap items-center gap-3 mt-2 text-white/80 text-xs font-semibold">
                 <span className="flex items-center gap-1">
                   <CalendarDays size={14} />
-                  {new Date(trip.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  {formatDate(trip.startDate, { month: "short", day: "numeric" }) || "..."}
                   {" — "}
-                  {new Date(trip.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  {formatDate(trip.endDate, { month: "short", day: "numeric", year: "numeric" }) || "..."}
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin size={14} />
@@ -917,7 +944,7 @@ export default function TripDetailPage() {
                           >
                             <div className="text-xs font-bold">Day {day.dayNum}</div>
                             <div className="text-[10px] font-semibold opacity-80">
-                              {new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                              {formatDate(day.date, { month: "short", day: "numeric" }) || "..."}
                             </div>
                           </button>
                         ))}
@@ -943,9 +970,9 @@ export default function TripDetailPage() {
                           Day {currentDay.dayNum} — {currentDay.city}
                         </h3>
                         <p className="text-sm text-slate-400 font-semibold">
-                          {new Date(currentDay.date).toLocaleDateString("en-US", {
+                          {formatDate(currentDay.date, {
                             weekday: "long", month: "long", day: "numeric",
-                          })}
+                          }) || "..."}
                           {" • "}{currentDay.country}
                         </p>
                         {currentDay.notes && (
@@ -1066,9 +1093,9 @@ export default function TripDetailPage() {
                             </span>
                           </div>
                           <p className="text-xs font-semibold text-slate-500">
-                            {new Date(stay.checkIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            {formatDate(stay.checkIn, { month: "short", day: "numeric" }) || "..."}
                             {" → "}
-                            {new Date(stay.checkOut).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            {formatDate(stay.checkOut, { month: "short", day: "numeric", year: "numeric" }) || "..."}
                           </p>
                           {(stay.checkInLabel || stay.checkOutLabel) && (
                             <p className="text-xs font-semibold text-slate-400">
@@ -1166,8 +1193,8 @@ export default function TripDetailPage() {
                             <span className="font-bold text-slate-700">{flight.arrivalAirport}</span>
                           </div>
                           <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400 font-semibold">
-                            <span>{new Date(flight.scheduledDeparture).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                            <span>{new Date(flight.scheduledDeparture).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</span>
+                            <span>{formatDate(flight.scheduledDeparture, { month: "short", day: "numeric" }) || "..."}</span>
+                            <span>{formatTime(flight.scheduledDeparture, { hour: "numeric", minute: "2-digit", hour12: true }) || "..."}</span>
                             {flight.terminal && <span>Terminal {flight.terminal}</span>}
                             {flight.gate && <span>Gate {flight.gate}</span>}
                           </div>

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { CalendarDays, ChevronRight, MapPin, Clock } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CITY_IMAGES, TRIP_VISUALS, ACTIVITY_TYPE_EMOJI } from "@/lib/constants";
 
@@ -56,7 +56,11 @@ const itemVariants = {
 };
 
 export default function ItineraryPage() {
-  const [currentTime] = useState(() => Date.now());
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    setCurrentTime(Date.now());
+  }, []);
 
   return (
     <AppShell>
@@ -75,9 +79,10 @@ export default function ItineraryPage() {
           {/* Trip Itinerary Cards */}
           {TRIPS_OVERVIEW.map((trip) => {
             const visuals = TRIP_VISUALS[trip.type];
-            const daysUntil = Math.ceil(
-              (new Date(trip.startDate).getTime() - currentTime) / (1000 * 60 * 60 * 24)
-            );
+            const daysUntil =
+              currentTime === null
+                ? null
+                : Math.ceil((new Date(trip.startDate).getTime() - currentTime) / (1000 * 60 * 60 * 24));
 
             return (
               <motion.div key={trip.id} variants={itemVariants}>
@@ -120,7 +125,7 @@ export default function ItineraryPage() {
                           </div>
                         </div>
 
-                        {daysUntil > 0 && (
+                        {daysUntil !== null && daysUntil > 0 && (
                           <div className="glass rounded-2xl px-4 py-2 text-center">
                             <div className="text-xl font-black text-coral">{daysUntil}</div>
                             <div className="text-[9px] font-bold text-slate-500 uppercase">days</div>
