@@ -1,31 +1,20 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Plane,
-  RefreshCw,
-  Calendar,
-  Plus,
-  Edit3,
-  Trash2,
-  Save,
-  X,
-} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Calendar, Edit3, Plane, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import { AppShell } from "@/components/app-shell";
-import {
-  getAirlineLogo,
-  FLIGHT_STATUS_CONFIG,
-} from "@/lib/constants";
+import { FLIGHT_STATUS_CONFIG, getAirlineLogo } from "@/lib/constants";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface Flight {
+interface FlightData {
   id: string;
+  tripId: string;
   flightNumber: string;
+  confirmationCode: string | null;
   airline: string;
-  airlineCode: string;
+  airlineCode: string | null;
   departureCity: string;
   departureAirport: string;
   arrivalCity: string;
@@ -35,30 +24,33 @@ interface Flight {
   status: string;
   terminal: string | null;
   gate: string | null;
-  tripName: string;
+  baggageBelt: string | null;
+  aircraft: string | null;
 }
 
-// ─── Demo Data ───────────────────────────────────────────────────────────────
-
-const INITIAL_FLIGHTS: Flight[] = [
-  { id: "f1", flightNumber: "EK505", airline: "Emirates", airlineCode: "EK", departureCity: "Dubai", departureAirport: "DXB", arrivalCity: "Hyderabad", arrivalAirport: "HYD", scheduledDeparture: "2026-04-10T08:30:00", scheduledArrival: "2026-04-10T13:00:00", status: "SCHEDULED", terminal: "3", gate: null, tripName: "India Solo Adventure" },
-  { id: "f2", flightNumber: "6E2341", airline: "IndiGo", airlineCode: "6E", departureCity: "Hyderabad", departureAirport: "HYD", arrivalCity: "Delhi", arrivalAirport: "DEL", scheduledDeparture: "2026-04-15T06:00:00", scheduledArrival: "2026-04-15T08:30:00", status: "SCHEDULED", terminal: "1", gate: null, tripName: "India Solo Adventure" },
-  { id: "f3", flightNumber: "EK511", airline: "Emirates", airlineCode: "EK", departureCity: "Delhi", departureAirport: "DEL", arrivalCity: "Dubai", arrivalAirport: "DXB", scheduledDeparture: "2026-04-20T14:00:00", scheduledArrival: "2026-04-20T16:30:00", status: "SCHEDULED", terminal: "3", gate: null, tripName: "India Solo Adventure" },
-  { id: "f4", flightNumber: "MS916", airline: "EgyptAir", airlineCode: "MS", departureCity: "Dubai", departureAirport: "DXB", arrivalCity: "Cairo", arrivalAirport: "CAI", scheduledDeparture: "2026-12-05T07:00:00", scheduledArrival: "2026-12-05T09:30:00", status: "SCHEDULED", terminal: "1", gate: null, tripName: "Egypt & Umrah Family Trip" },
-  { id: "f5", flightNumber: "MS714", airline: "EgyptAir", airlineCode: "MS", departureCity: "Cairo", departureAirport: "CAI", arrivalCity: "Sharm El Sheikh", arrivalAirport: "SSH", scheduledDeparture: "2026-12-10T10:00:00", scheduledArrival: "2026-12-10T11:00:00", status: "SCHEDULED", terminal: null, gate: null, tripName: "Egypt & Umrah Family Trip" },
-  { id: "f6", flightNumber: "SV1234", airline: "Saudia", airlineCode: "SV", departureCity: "Sharm El Sheikh", departureAirport: "SSH", arrivalCity: "Jeddah", arrivalAirport: "JED", scheduledDeparture: "2026-12-14T12:00:00", scheduledArrival: "2026-12-14T14:00:00", status: "SCHEDULED", terminal: null, gate: null, tripName: "Egypt & Umrah Family Trip" },
-];
-
-function formatDate(dateStr: string, options?: Intl.DateTimeFormatOptions) {
-  return new Date(dateStr).toLocaleDateString("en-US", options || { month: "short", day: "numeric" });
+interface TripOption {
+  id: string;
+  name: string;
 }
 
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-}
-
-function getDaysUntil(dateStr: string): number {
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+interface FlightFormData {
+  id?: string;
+  tripId: string;
+  flightNumber: string;
+  confirmationCode: string;
+  airline: string;
+  airlineCode: string;
+  departureCity: string;
+  departureAirport: string;
+  arrivalCity: string;
+  arrivalAirport: string;
+  scheduledDeparture: string;
+  scheduledArrival: string;
+  status: string;
+  terminal: string;
+  gate: string;
+  baggageBelt: string;
+  aircraft: string;
 }
 
 const containerVariants = {
@@ -71,35 +63,117 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 200, damping: 20 } },
 };
 
-// ─── Edit Flight Modal ──────────────────────────────────────────────────────
+function formatDate(dateStr: string, options?: Intl.DateTimeFormatOptions) {
+  return new Date(dateStr).toLocaleDateString(
+    "en-US",
+    options || { month: "short", day: "numeric" }
+  );
+}
+
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function getDaysUntil(dateStr: string) {
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+function toDateTimeLocalValue(dateStr: string) {
+  if (!dateStr) {
+    return "";
+  }
+
+  const date = new Date(dateStr);
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+
+function toIsoString(value: string) {
+  return value ? new Date(value).toISOString() : "";
+}
 
 function FlightModal({
   flight,
+  trips,
+  saving,
   onSave,
   onClose,
 }: {
-  flight: Flight | null;
-  onSave: (f: Flight) => void;
+  flight: FlightData | null;
+  trips: TripOption[];
+  saving: boolean;
+  onSave: (flight: FlightFormData) => Promise<void>;
   onClose: () => void;
 }) {
-  const [form, setForm] = useState<Flight>(() =>
-    flight || {
-      id: `fl-${Date.now()}`,
-      flightNumber: "",
-      airline: "",
-      airlineCode: "",
-      departureCity: "",
-      departureAirport: "",
-      arrivalCity: "",
-      arrivalAirport: "",
-      scheduledDeparture: "",
-      scheduledArrival: "",
-      status: "SCHEDULED",
-      terminal: null,
-      gate: null,
-      tripName: "India Solo Adventure",
+  const [form, setForm] = useState<FlightFormData>(() => ({
+    id: flight?.id,
+    tripId: flight?.tripId || trips[0]?.id || "",
+    flightNumber: flight?.flightNumber || "",
+    confirmationCode: flight?.confirmationCode || "",
+    airline: flight?.airline || "",
+    airlineCode: flight?.airlineCode || "",
+    departureCity: flight?.departureCity || "",
+    departureAirport: flight?.departureAirport || "",
+    arrivalCity: flight?.arrivalCity || "",
+    arrivalAirport: flight?.arrivalAirport || "",
+    scheduledDeparture: flight?.scheduledDeparture || "",
+    scheduledArrival: flight?.scheduledArrival || "",
+    status: flight?.status || "SCHEDULED",
+    terminal: flight?.terminal || "",
+    gate: flight?.gate || "",
+    baggageBelt: flight?.baggageBelt || "",
+    aircraft: flight?.aircraft || "",
+  }));
+  const [lookupMessage, setLookupMessage] = useState<string | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+
+  const handleLookup = async () => {
+    if (!form.flightNumber.trim()) {
+      return;
     }
-  );
+
+    try {
+      setLookupLoading(true);
+      setLookupMessage(null);
+
+      const response = await fetch(
+        `/api/flights/status?flight=${encodeURIComponent(form.flightNumber.trim().toUpperCase())}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Live flight lookup unavailable.");
+      }
+
+      const data = await response.json();
+      setForm((current) => ({
+        ...current,
+        flightNumber: data.flightNumber || current.flightNumber,
+        airline: data.airline || current.airline,
+        airlineCode: data.airlineCode || current.airlineCode,
+        departureAirport: data.departure?.airport || current.departureAirport,
+        departureCity: data.departure?.city || current.departureCity,
+        arrivalAirport: data.arrival?.airport || current.arrivalAirport,
+        arrivalCity: data.arrival?.city || current.arrivalCity,
+        scheduledDeparture: data.departure?.scheduled || current.scheduledDeparture,
+        scheduledArrival: data.arrival?.scheduled || current.scheduledArrival,
+        terminal: data.departure?.terminal || current.terminal,
+        gate: data.departure?.gate || current.gate,
+        baggageBelt: data.arrival?.baggage || current.baggageBelt,
+        aircraft: data.aircraft || current.aircraft,
+        status: data.status || current.status,
+      }));
+      setLookupMessage("Live status loaded.");
+    } catch (error) {
+      setLookupMessage(error instanceof Error ? error.message : "Lookup failed.");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   return (
     <motion.div
@@ -113,112 +187,234 @@ function FlightModal({
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.9, y: 20 }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
         className="bg-white rounded-3xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl"
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
             ✈️ {flight ? "Edit Flight" : "Add Flight"}
           </h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100">
+            <X size={18} />
+          </button>
         </div>
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Flight Number</label>
-              <input value={form.flightNumber} onChange={(e) => setForm({ ...form, flightNumber: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="EK505" />
+              <input
+                value={form.flightNumber}
+                onChange={(event) =>
+                  setForm({ ...form, flightNumber: event.target.value.toUpperCase() })
+                }
+                onBlur={() => {
+                  void handleLookup();
+                }}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="EY358"
+              />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-500 block mb-1">Airline</label>
-              <input value={form.airline} onChange={(e) => setForm({ ...form, airline: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="Emirates" />
+              <label className="text-xs font-bold text-slate-500 block mb-1">Confirmation</label>
+              <input
+                value={form.confirmationCode}
+                onChange={(event) =>
+                  setForm({ ...form, confirmationCode: event.target.value.toUpperCase() })
+                }
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="STTKL"
+              />
             </div>
           </div>
 
+          {lookupMessage && (
+            <p className="text-xs font-semibold text-slate-500">{lookupMessage}</p>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold text-slate-500 block mb-1">Airline Code</label>
-              <input value={form.airlineCode} onChange={(e) => setForm({ ...form, airlineCode: e.target.value.toUpperCase() })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase" placeholder="EK" maxLength={3} />
+              <label className="text-xs font-bold text-slate-500 block mb-1">Airline</label>
+              <input
+                value={form.airline}
+                onChange={(event) => setForm({ ...form, airline: event.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="Etihad Airways"
+              />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-500 block mb-1">Trip</label>
-              <select value={form.tripName} onChange={(e) => setForm({ ...form, tripName: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40">
-                <option>India Solo Adventure</option>
-                <option>Egypt & Umrah Family Trip</option>
-              </select>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Airline Code</label>
+              <input
+                value={form.airlineCode}
+                onChange={(event) =>
+                  setForm({ ...form, airlineCode: event.target.value.toUpperCase() })
+                }
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase"
+                placeholder="EY"
+                maxLength={3}
+              />
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-500 block mb-1">Trip</label>
+            <select
+              value={form.tripId}
+              onChange={(event) => setForm({ ...form, tripId: event.target.value })}
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+            >
+              {trips.map((trip) => (
+                <option key={trip.id} value={trip.id}>
+                  {trip.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">From (City)</label>
-              <input value={form.departureCity} onChange={(e) => setForm({ ...form, departureCity: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="Dubai" />
+              <input
+                value={form.departureCity}
+                onChange={(event) => setForm({ ...form, departureCity: event.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="Abu Dhabi"
+              />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">From (Airport)</label>
-              <input value={form.departureAirport} onChange={(e) => setForm({ ...form, departureAirport: e.target.value.toUpperCase() })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase" placeholder="DXB" maxLength={4} />
+              <input
+                value={form.departureAirport}
+                onChange={(event) =>
+                  setForm({ ...form, departureAirport: event.target.value.toUpperCase() })
+                }
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase"
+                placeholder="AUH"
+                maxLength={4}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">To (City)</label>
-              <input value={form.arrivalCity} onChange={(e) => setForm({ ...form, arrivalCity: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="Hyderabad" />
+              <input
+                value={form.arrivalCity}
+                onChange={(event) => setForm({ ...form, arrivalCity: event.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="Hyderabad"
+              />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">To (Airport)</label>
-              <input value={form.arrivalAirport} onChange={(e) => setForm({ ...form, arrivalAirport: e.target.value.toUpperCase() })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase" placeholder="HYD" maxLength={4} />
+              <input
+                value={form.arrivalAirport}
+                onChange={(event) =>
+                  setForm({ ...form, arrivalAirport: event.target.value.toUpperCase() })
+                }
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase"
+                placeholder="HYD"
+                maxLength={4}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Departure</label>
-              <input type="datetime-local" value={form.scheduledDeparture ? form.scheduledDeparture.slice(0, 16) : ""}
-                onChange={(e) => setForm({ ...form, scheduledDeparture: e.target.value + ":00" })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+              <input
+                type="datetime-local"
+                value={toDateTimeLocalValue(form.scheduledDeparture)}
+                onChange={(event) =>
+                  setForm({ ...form, scheduledDeparture: toIsoString(event.target.value) })
+                }
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+              />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Arrival</label>
-              <input type="datetime-local" value={form.scheduledArrival ? form.scheduledArrival.slice(0, 16) : ""}
-                onChange={(e) => setForm({ ...form, scheduledArrival: e.target.value + ":00" })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" />
+              <input
+                type="datetime-local"
+                value={toDateTimeLocalValue(form.scheduledArrival)}
+                onChange={(event) =>
+                  setForm({ ...form, scheduledArrival: toIsoString(event.target.value) })
+                }
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Terminal</label>
-              <input value={form.terminal || ""} onChange={(e) => setForm({ ...form, terminal: e.target.value || null })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="3" />
+              <input
+                value={form.terminal}
+                onChange={(event) => setForm({ ...form, terminal: event.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="3"
+              />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Gate</label>
-              <input value={form.gate || ""} onChange={(e) => setForm({ ...form, gate: e.target.value || null })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="B12" />
+              <input
+                value={form.gate}
+                onChange={(event) => setForm({ ...form, gate: event.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="B12"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Baggage Belt</label>
+              <input
+                value={form.baggageBelt}
+                onChange={(event) => setForm({ ...form, baggageBelt: event.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="7"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Aircraft</label>
+              <input
+                value={form.aircraft}
+                onChange={(event) => setForm({ ...form, aircraft: event.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40"
+                placeholder="A320"
+              />
             </div>
           </div>
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors"
+          >
             Cancel
           </button>
           <button
-            onClick={() => { onSave(form); onClose(); }}
-            disabled={!form.flightNumber || !form.departureCity || !form.arrivalCity}
-            className="flex-1 px-4 py-3 rounded-2xl bg-gradient-to-r from-coral to-sunset text-white font-bold text-sm shadow-lg shadow-coral/25 disabled:opacity-50">
+            onClick={() => {
+              void onSave(form);
+            }}
+            disabled={
+              saving ||
+              lookupLoading ||
+              !form.tripId ||
+              !form.flightNumber ||
+              !form.airline ||
+              !form.departureCity ||
+              !form.departureAirport ||
+              !form.arrivalCity ||
+              !form.arrivalAirport ||
+              !form.scheduledDeparture ||
+              !form.scheduledArrival
+            }
+            className="flex-1 px-4 py-3 rounded-2xl bg-gradient-to-r from-coral to-sunset text-white font-bold text-sm shadow-lg shadow-coral/25 disabled:opacity-50"
+          >
             <Save size={14} className="inline mr-1.5" />
-            {flight ? "Save Changes" : "Add Flight"}
+            {saving ? "Saving..." : flight ? "Save Changes" : "Add Flight"}
           </button>
         </div>
       </motion.div>
@@ -226,48 +422,141 @@ function FlightModal({
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
-
 export default function FlightsPage() {
-  const [flights, setFlights] = useState<Flight[]>(INITIAL_FLIGHTS);
+  const [flights, setFlights] = useState<FlightData[]>([]);
+  const [trips, setTrips] = useState<TripOption[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [editingFlight, setEditingFlight] = useState<Flight | null>(null);
+  const [editingFlight, setEditingFlight] = useState<FlightData | null>(null);
 
-  // Group by trip
-  const grouped: Record<string, Flight[]> = {};
-  flights.forEach((f) => {
-    if (!grouped[f.tripName]) grouped[f.tripName] = [];
-    grouped[f.tripName].push(f);
-  });
+  const loadData = async () => {
+    try {
+      setRefreshing(true);
+      const [flightsResponse, tripsResponse] = await Promise.all([
+        fetch("/api/flights", { cache: "no-store" }),
+        fetch("/api/trips", { cache: "no-store" }),
+      ]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setRefreshing(false);
-  };
-
-  const handleSave = (flight: Flight) => {
-    setFlights((prev) => {
-      const idx = prev.findIndex((f) => f.id === flight.id);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = flight;
-        return updated;
+      if (!flightsResponse.ok || !tripsResponse.ok) {
+        throw new Error("Failed to load flights.");
       }
-      return [...prev, flight];
-    });
+
+      const [flightsData, tripsData] = await Promise.all([
+        flightsResponse.json(),
+        tripsResponse.json(),
+      ]);
+
+      setFlights(flightsData);
+      setTrips(tripsData.map((trip: TripOption) => ({ id: trip.id, name: trip.name })));
+      setError(null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Failed to load flights.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const handleDelete = (flightId: string) => {
-    setFlights((prev) => prev.filter((f) => f.id !== flightId));
+  useEffect(() => {
+    void loadData();
+  }, []);
+
+  const groupedFlights = useMemo(() => {
+    const tripNames = new Map(trips.map((trip) => [trip.id, trip.name]));
+    const grouped: Record<string, FlightData[]> = {};
+
+    flights.forEach((flight) => {
+      const tripName = tripNames.get(flight.tripId) || "Unassigned Trip";
+      if (!grouped[tripName]) {
+        grouped[tripName] = [];
+      }
+
+      grouped[tripName].push(flight);
+    });
+
+    return Object.entries(grouped).sort((left, right) => left[0].localeCompare(right[0]));
+  }, [flights, trips]);
+
+  const handleSave = async (flight: FlightFormData) => {
+    try {
+      setSaving(true);
+
+      const payload = {
+        tripId: flight.tripId,
+        flightNumber: flight.flightNumber,
+        confirmationCode: flight.confirmationCode || null,
+        airline: flight.airline,
+        airlineCode: flight.airlineCode || null,
+        departureCity: flight.departureCity,
+        departureAirport: flight.departureAirport,
+        arrivalCity: flight.arrivalCity,
+        arrivalAirport: flight.arrivalAirport,
+        scheduledDeparture: flight.scheduledDeparture,
+        scheduledArrival: flight.scheduledArrival,
+        status: flight.status,
+        terminal: flight.terminal || null,
+        gate: flight.gate || null,
+        baggageBelt: flight.baggageBelt || null,
+        aircraft: flight.aircraft || null,
+      };
+
+      const response = await fetch(flight.id ? `/api/flights/${flight.id}` : "/api/flights", {
+        method: flight.id ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save flight.");
+      }
+
+      const savedFlight = await response.json();
+      setFlights((current) => {
+        const existingIndex = current.findIndex((item) => item.id === savedFlight.id);
+
+        if (existingIndex >= 0) {
+          const updated = [...current];
+          updated[existingIndex] = savedFlight;
+          return updated;
+        }
+
+        return [...current, savedFlight].sort(
+          (left, right) =>
+            new Date(left.scheduledDeparture).getTime() - new Date(right.scheduledDeparture).getTime()
+        );
+      });
+      setShowModal(false);
+      setEditingFlight(null);
+      setError(null);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Failed to save flight.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (flightId: string) => {
+    try {
+      const response = await fetch(`/api/flights/${flightId}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete flight.");
+      }
+
+      setFlights((current) => current.filter((flight) => flight.id !== flightId));
+      setError(null);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Failed to delete flight.");
+    }
   };
 
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-8">
-          {/* Header */}
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 flex items-center gap-3">
@@ -281,14 +570,16 @@ export default function FlightsPage() {
                 Flights
               </h1>
               <p className="text-sm text-slate-400 font-semibold">
-                {flights.length} flight{flights.length !== 1 ? "s" : ""} tracked
+                {loading ? "Loading flights..." : `${flights.length} flight${flights.length !== 1 ? "s" : ""} tracked`}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleRefresh}
+                onClick={() => {
+                  void loadData();
+                }}
                 disabled={refreshing}
                 className="flex items-center gap-2 glass px-4 py-2.5 rounded-2xl text-sm font-bold text-slate-600 hover:text-coral disabled:opacity-50"
               >
@@ -298,8 +589,12 @@ export default function FlightsPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => { setEditingFlight(null); setShowModal(true); }}
-                className="flex items-center gap-1.5 bg-gradient-to-r from-coral to-sunset text-white px-4 py-2.5 rounded-2xl text-sm font-bold shadow-lg shadow-coral/25"
+                onClick={() => {
+                  setEditingFlight(null);
+                  setShowModal(true);
+                }}
+                disabled={trips.length === 0}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-coral to-sunset text-white px-4 py-2.5 rounded-2xl text-sm font-bold shadow-lg shadow-coral/25 disabled:opacity-50"
               >
                 <Plus size={16} />
                 Add Flight
@@ -307,8 +602,13 @@ export default function FlightsPage() {
             </div>
           </motion.div>
 
-          {/* Flight Groups */}
-          {Object.entries(grouped).map(([tripName, tripFlights]) => (
+          {error && (
+            <motion.div variants={itemVariants} className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+              {error}
+            </motion.div>
+          )}
+
+          {groupedFlights.map(([tripName, tripFlights]) => (
             <motion.div key={tripName} variants={itemVariants} className="space-y-4">
               <h2 className="text-sm font-bold text-slate-500 flex items-center gap-2">
                 <Plane size={16} className="text-coral" />
@@ -318,7 +618,9 @@ export default function FlightsPage() {
 
               <div className="space-y-3">
                 {tripFlights.map((flight) => {
-                  const statusConfig = FLIGHT_STATUS_CONFIG[flight.status] || FLIGHT_STATUS_CONFIG.UNKNOWN;
+                  const statusConfig =
+                    FLIGHT_STATUS_CONFIG[flight.status as keyof typeof FLIGHT_STATUS_CONFIG] ||
+                    FLIGHT_STATUS_CONFIG.UNKNOWN;
                   const daysUntil = getDaysUntil(flight.scheduledDeparture);
 
                   return (
@@ -327,28 +629,31 @@ export default function FlightsPage() {
                       whileHover={{ y: -3, scale: 1.01 }}
                       className="glass rounded-3xl p-5 shadow-md hover:shadow-lg transition-all group relative"
                     >
-                      {/* Edit/Delete buttons */}
                       <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button
-                          onClick={() => { setEditingFlight(flight); setShowModal(true); }}
+                          onClick={() => {
+                            setEditingFlight(flight);
+                            setShowModal(true);
+                          }}
                           className="p-2 rounded-full bg-white/80 hover:bg-coral/10 transition-colors shadow-sm"
                         >
                           <Edit3 size={14} className="text-slate-500" />
                         </button>
                         <button
-                          onClick={() => handleDelete(flight.id)}
+                          onClick={() => {
+                            void handleDelete(flight.id);
+                          }}
                           className="p-2 rounded-full bg-white/80 hover:bg-red-50 transition-colors shadow-sm"
                         >
                           <Trash2 size={14} className="text-red-400" />
                         </button>
                       </div>
 
-                      {/* Top Row: Airline + Status */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center overflow-hidden">
                             <Image
-                              src={getAirlineLogo(flight.airlineCode, 80)}
+                              src={getAirlineLogo(flight.airlineCode || flight.airline.slice(0, 2).toUpperCase(), 80)}
                               alt={flight.airline}
                               width={32}
                               height={16}
@@ -358,14 +663,17 @@ export default function FlightsPage() {
                           <div>
                             <p className="font-black text-slate-800">{flight.flightNumber}</p>
                             <p className="text-xs text-slate-400 font-semibold">{flight.airline}</p>
+                            {flight.confirmationCode && (
+                              <p className="text-[11px] text-slate-400 font-semibold">
+                                Confirmation {flight.confirmationCode}
+                              </p>
+                            )}
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                           {daysUntil > 0 && (
-                            <span className="text-xs font-bold text-slate-400">
-                              in {daysUntil}d
-                            </span>
+                            <span className="text-xs font-bold text-slate-400">in {daysUntil}d</span>
                           )}
                           <span
                             className={`text-xs font-bold px-3 py-1 rounded-full ${statusConfig.bgColor} ${statusConfig.color} ${statusConfig.animation || ""}`}
@@ -375,7 +683,6 @@ export default function FlightsPage() {
                         </div>
                       </div>
 
-                      {/* Route */}
                       <div className="flex items-center gap-4">
                         <div className="text-center flex-1">
                           <p className="text-2xl font-black text-slate-800">{flight.departureAirport}</p>
@@ -403,15 +710,20 @@ export default function FlightsPage() {
                         </div>
                       </div>
 
-                      {/* Bottom Row */}
                       <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
                         <span className="text-xs text-slate-400 font-semibold flex items-center gap-1">
                           <Calendar size={12} />
-                          {formatDate(flight.scheduledDeparture, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                          {formatDate(flight.scheduledDeparture, {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
                         </span>
                         <div className="flex items-center gap-3 text-xs text-slate-400 font-semibold">
                           {flight.terminal && <span>Terminal {flight.terminal}</span>}
                           {flight.gate && <span>Gate {flight.gate}</span>}
+                          {flight.baggageBelt && <span>Belt {flight.baggageBelt}</span>}
                         </div>
                       </div>
                     </motion.div>
@@ -421,9 +733,15 @@ export default function FlightsPage() {
             </motion.div>
           ))}
 
-          {flights.length === 0 && (
+          {!loading && flights.length === 0 && (
             <motion.div variants={itemVariants} className="text-center py-20">
-              <motion.div animate={{ y: [0, -10, 0], rotate: [0, -5, 5, 0] }} transition={{ duration: 3, repeat: Infinity }} className="text-8xl mb-4">✈️</motion.div>
+              <motion.div
+                animate={{ y: [0, -10, 0], rotate: [0, -5, 5, 0] }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="text-8xl mb-4"
+              >
+                ✈️
+              </motion.div>
               <p className="text-xl font-bold text-slate-400">No flights yet</p>
               <p className="text-sm text-slate-300 mt-2">Add your first flight to start tracking</p>
             </motion.div>
@@ -431,13 +749,17 @@ export default function FlightsPage() {
         </motion.div>
       </div>
 
-      {/* Modal */}
       <AnimatePresence>
         {showModal && (
           <FlightModal
             flight={editingFlight}
+            trips={trips}
+            saving={saving}
             onSave={handleSave}
-            onClose={() => setShowModal(false)}
+            onClose={() => {
+              setShowModal(false);
+              setEditingFlight(null);
+            }}
           />
         )}
       </AnimatePresence>

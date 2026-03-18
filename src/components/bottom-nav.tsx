@@ -5,8 +5,8 @@ import {
   Home,
   CalendarDays,
   MapPin,
-  FileText,
-  Settings,
+  Plane,
+  BedDouble,
   Moon,
   Sparkles,
 } from "lucide-react";
@@ -17,6 +17,8 @@ const NAV_ITEMS = [
   { href: "/", icon: Home, label: "Home", emoji: "🏠" },
   { href: "/itinerary", icon: CalendarDays, label: "Itinerary", emoji: "📅" },
   { href: "/places", icon: MapPin, label: "Places", emoji: "📍" },
+  { href: "/flights", icon: Plane, label: "Flights", emoji: "✈️" },
+  { href: "/stays", icon: BedDouble, label: "Stays", emoji: "🏨" },
   { href: "/umrah", icon: Moon, label: "Umrah", emoji: "🕋" },
   { href: "/recommendations", icon: Sparkles, label: "Discover", emoji: "✨" },
 ];

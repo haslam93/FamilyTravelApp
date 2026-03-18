@@ -13,10 +13,15 @@ export async function PATCH(
     const data: Record<string, unknown> = {};
     if (body.name !== undefined) data.name = body.name;
     if (body.category !== undefined) data.category = body.category;
+    if (body.city !== undefined) data.city = body.city;
+    if (body.country !== undefined) data.country = body.country;
     if (body.address !== undefined) data.address = body.address;
     if (body.notes !== undefined) data.notes = body.notes;
     if (body.kidFriendly !== undefined) data.kidFriendly = body.kidFriendly;
     if (body.photoUrl !== undefined) data.photoUrl = body.photoUrl;
+    if (body.googleMapsUrl !== undefined) data.googleMapsUrl = body.googleMapsUrl;
+    if (body.googlePlaceId !== undefined) data.googlePlaceId = body.googlePlaceId;
+    if (body.rating !== undefined) data.rating = body.rating;
     if (body.tripDayId !== undefined) data.tripDayId = body.tripDayId;
 
     // Handle visited toggle

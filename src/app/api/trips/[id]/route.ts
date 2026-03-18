@@ -25,6 +25,9 @@ export async function GET(
         flights: {
           orderBy: { scheduledDeparture: "asc" },
         },
+        stays: {
+          orderBy: { checkIn: "asc" },
+        },
         documents: true,
       },
     });
@@ -61,7 +64,7 @@ export async function PATCH(
         ...(body.countries && { countries: body.countries }),
         ...(body.coverImage !== undefined && { coverImage: body.coverImage }),
         ...(body.description !== undefined && { description: body.description }),
-        ...(body.travelers && { travelers: body.travelers }),
+        ...(body.travelers !== undefined && { travelers: body.travelers }),
       },
     });
 

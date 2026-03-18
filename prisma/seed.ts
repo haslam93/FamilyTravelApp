@@ -15,6 +15,7 @@ async function main() {
   await prisma.recommendation.deleteMany();
   await prisma.document.deleteMany();
   await prisma.activity.deleteMany();
+  await prisma.stay.deleteMany();
   await prisma.place.deleteMany();
   await prisma.flight.deleteMany();
   await prisma.tripDay.deleteMany();
@@ -38,17 +39,18 @@ async function main() {
 
   const indiaTrip = await prisma.trip.create({
     data: {
-      name: "India Solo Adventure",
+      id: "india-solo-2026",
+      name: "Trip to Hyderabad",
       type: "SOLO",
       status: "PLANNING",
-      startDate: new Date("2026-04-10"),
-      endDate: new Date("2026-04-20"),
+      startDate: new Date("2026-04-28"),
+      endDate: new Date("2026-05-11"),
       cities: ["Hyderabad", "Delhi"],
       countries: ["India"],
       coverImage:
         "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=1200&q=80",
       description:
-        "Solo exploration of Hyderabad and Delhi — heritage, food, and culture.",
+        "Hyderabad-first solo trip with a Delhi stop on the way back, based on the booked Etihad, IndiGo, and Emirates segments.",
       travelers: 1,
     },
   });
@@ -56,21 +58,21 @@ async function main() {
 
   // ─── India Trip Days ──────────────────────────────────────────────────────
   const indiaDays = [];
-  // Days 1-6: Hyderabad (Apr 10–15)
-  for (let i = 0; i < 6; i++) {
+  // Days 1-9: Hyderabad (Apr 28–May 6)
+  for (let i = 0; i < 9; i++) {
     indiaDays.push({
-      date: new Date(`2026-04-${10 + i}`),
+      date: new Date(`2026-${i < 3 ? "04" : "05"}-${String(i < 3 ? 28 + i : i - 2).padStart(2, "0")}`),
       dayNum: i + 1,
       city: "Hyderabad",
       country: "India",
       tripId: indiaTrip.id,
     });
   }
-  // Days 7-11: Delhi (Apr 16–20)
+  // Days 10-14: Delhi (May 7–11)
   for (let i = 0; i < 5; i++) {
     indiaDays.push({
-      date: new Date(`2026-04-${16 + i}`),
-      dayNum: 7 + i,
+      date: new Date(`2026-05-${String(7 + i).padStart(2, "0")}`),
+      dayNum: 10 + i,
       city: "Delhi",
       country: "India",
       tripId: indiaTrip.id,
@@ -85,54 +87,86 @@ async function main() {
   const indiaFlights = await Promise.all([
     prisma.flight.create({
       data: {
-        flightNumber: "EK504",
-        airline: "Emirates",
-        airlineCode: "EK",
-        departureAirport: "DXB",
-        departureCity: "Dubai",
-        arrivalAirport: "HYD",
-        arrivalCity: "Hyderabad",
-        scheduledDeparture: new Date("2026-04-10T03:30:00Z"),
-        scheduledArrival: new Date("2026-04-10T08:45:00Z"),
+        flightNumber: "EY22",
+        confirmationCode: "STTKL",
+        airline: "Etihad Airways",
+        airlineCode: "EY",
+        departureAirport: "YYZ",
+        departureCity: "Toronto",
+        arrivalAirport: "AUH",
+        arrivalCity: "Abu Dhabi",
+        scheduledDeparture: new Date("2026-04-28T15:10:00-04:00"),
+        scheduledArrival: new Date("2026-04-29T12:30:00+04:00"),
         status: "SCHEDULED",
-        terminal: "3",
-        gate: "B22",
-        aircraft: "Boeing 777-300ER",
+        terminal: "1",
         tripId: indiaTrip.id,
       },
     }),
     prisma.flight.create({
       data: {
-        flightNumber: "6E2341",
+        flightNumber: "EY358",
+        confirmationCode: "STTKL",
+        airline: "Etihad Airways",
+        airlineCode: "EY",
+        departureAirport: "AUH",
+        departureCity: "Abu Dhabi",
+        arrivalAirport: "HYD",
+        arrivalCity: "Hyderabad",
+        scheduledDeparture: new Date("2026-04-29T14:30:00+04:00"),
+        scheduledArrival: new Date("2026-04-29T19:45:00+05:30"),
+        status: "SCHEDULED",
+        terminal: "A",
+        tripId: indiaTrip.id,
+      },
+    }),
+    prisma.flight.create({
+      data: {
+        flightNumber: "6E6202",
+        confirmationCode: "CCGM9X",
         airline: "IndiGo",
         airlineCode: "6E",
         departureAirport: "HYD",
         departureCity: "Hyderabad",
         arrivalAirport: "DEL",
         arrivalCity: "Delhi",
-        scheduledDeparture: new Date("2026-04-16T06:00:00Z"),
-        scheduledArrival: new Date("2026-04-16T08:20:00Z"),
+        scheduledDeparture: new Date("2026-05-07T10:35:00+05:30"),
+        scheduledArrival: new Date("2026-05-07T13:10:00+05:30"),
         status: "SCHEDULED",
         terminal: "1",
-        aircraft: "Airbus A320neo",
         tripId: indiaTrip.id,
       },
     }),
     prisma.flight.create({
       data: {
-        flightNumber: "EK511",
+        flightNumber: "EK513",
+        confirmationCode: "JMH5CJ",
         airline: "Emirates",
         airlineCode: "EK",
         departureAirport: "DEL",
         departureCity: "Delhi",
         arrivalAirport: "DXB",
         arrivalCity: "Dubai",
-        scheduledDeparture: new Date("2026-04-20T22:00:00Z"),
-        scheduledArrival: new Date("2026-04-21T00:30:00Z"),
+        scheduledDeparture: new Date("2026-05-10T04:25:00+05:30"),
+        scheduledArrival: new Date("2026-05-10T06:25:00+04:00"),
         status: "SCHEDULED",
         terminal: "3",
-        gate: "D14",
-        aircraft: "Airbus A380-800",
+        tripId: indiaTrip.id,
+      },
+    }),
+    prisma.flight.create({
+      data: {
+        flightNumber: "EK241",
+        confirmationCode: "JMH5CJ",
+        airline: "Emirates",
+        airlineCode: "EK",
+        departureAirport: "DXB",
+        departureCity: "Dubai",
+        arrivalAirport: "YYZ",
+        arrivalCity: "Toronto",
+        scheduledDeparture: new Date("2026-05-11T03:30:00+04:00"),
+        scheduledArrival: new Date("2026-05-11T09:30:00-04:00"),
+        status: "SCHEDULED",
+        terminal: "3",
         tripId: indiaTrip.id,
       },
     }),
@@ -455,17 +489,18 @@ async function main() {
 
   const familyTrip = await prisma.trip.create({
     data: {
-      name: "Egypt & Umrah Family Trip",
+      id: "family-egypt-saudi-2026",
+      name: "Trip to Cairo and Umrah",
       type: "FAMILY",
       status: "PLANNING",
       startDate: new Date("2026-12-05"),
-      endDate: new Date("2026-12-22"),
-      cities: ["Cairo", "Sharm El Sheikh", "Makkah", "Madinah"],
+      endDate: new Date("2026-12-24"),
+      cities: ["Cairo", "Sharm El Sheikh", "Madinah", "Makkah"],
       countries: ["Egypt", "Saudi Arabia"],
       coverImage:
         "https://images.unsplash.com/photo-1553913861-c0fddf2619ee?w=1200&q=80",
       description:
-        "Family adventure through Egypt (pyramids & Red Sea) and Saudi Arabia for Umrah — traveling with 3 kids (ages 5, 3, and under 2).",
+        "Family trip covering Cairo, Sharm El Sheikh, and the Umrah leg in Madinah and Makkah, seeded from the booked flights and hotel confirmations.",
       travelers: 5,
     },
   });
@@ -483,8 +518,8 @@ async function main() {
       tripId: familyTrip.id,
     });
   }
-  // Days 5-8: Sharm El Sheikh (Dec 9–12)
-  for (let i = 0; i < 4; i++) {
+  // Days 5-7: Sharm El Sheikh (Dec 9–11)
+  for (let i = 0; i < 3; i++) {
     familyDays.push({
       date: new Date(`2026-12-${String(9 + i).padStart(2, "0")}`),
       dayNum: 5 + i,
@@ -493,26 +528,44 @@ async function main() {
       tripId: familyTrip.id,
     });
   }
-  // Days 9-13: Makkah (Dec 13–17)
-  for (let i = 0; i < 5; i++) {
+  // Days 8-10: Cairo (Dec 12–14)
+  for (let i = 0; i < 3; i++) {
     familyDays.push({
-      date: new Date(`2026-12-${13 + i}`),
-      dayNum: 9 + i,
-      city: "Makkah",
-      country: "Saudi Arabia",
+      date: new Date(`2026-12-${12 + i}`),
+      dayNum: 8 + i,
+      city: "Cairo",
+      country: "Egypt",
       tripId: familyTrip.id,
     });
   }
-  // Days 14-18: Madinah (Dec 18–22)
-  for (let i = 0; i < 5; i++) {
+  // Days 11-14: Madinah (Dec 15–18)
+  for (let i = 0; i < 4; i++) {
     familyDays.push({
-      date: new Date(`2026-12-${18 + i}`),
-      dayNum: 14 + i,
+      date: new Date(`2026-12-${15 + i}`),
+      dayNum: 11 + i,
       city: "Madinah",
       country: "Saudi Arabia",
       tripId: familyTrip.id,
     });
   }
+  // Days 15-19: Makkah (Dec 19–23)
+  for (let i = 0; i < 5; i++) {
+    familyDays.push({
+      date: new Date(`2026-12-${19 + i}`),
+      dayNum: 15 + i,
+      city: "Makkah",
+      country: "Saudi Arabia",
+      tripId: familyTrip.id,
+    });
+  }
+  // Day 20: Cairo return (Dec 24)
+  familyDays.push({
+    date: new Date("2026-12-24"),
+    dayNum: 20,
+    city: "Cairo",
+    country: "Egypt",
+    tripId: familyTrip.id,
+  });
   const createdFamilyDays = await Promise.all(
     familyDays.map((d) => prisma.tripDay.create({ data: d }))
   );
@@ -522,19 +575,17 @@ async function main() {
   const familyFlights = await Promise.all([
     prisma.flight.create({
       data: {
-        flightNumber: "EK927",
-        airline: "Emirates",
-        airlineCode: "EK",
-        departureAirport: "DXB",
-        departureCity: "Dubai",
+        flightNumber: "MS996",
+        airline: "EgyptAir",
+        airlineCode: "MS",
+        departureAirport: "YYZ",
+        departureCity: "Toronto",
         arrivalAirport: "CAI",
         arrivalCity: "Cairo",
-        scheduledDeparture: new Date("2026-12-05T08:00:00Z"),
-        scheduledArrival: new Date("2026-12-05T10:10:00Z"),
+        scheduledDeparture: new Date("2026-12-05T12:00:00-05:00"),
+        scheduledArrival: new Date("2026-12-06T05:25:00+02:00"),
         status: "SCHEDULED",
-        terminal: "3",
-        gate: "A15",
-        aircraft: "Boeing 777-200LR",
+        terminal: "1",
         tripId: familyTrip.id,
       },
     }),
@@ -547,51 +598,114 @@ async function main() {
         departureCity: "Cairo",
         arrivalAirport: "SSH",
         arrivalCity: "Sharm El Sheikh",
-        scheduledDeparture: new Date("2026-12-09T07:00:00Z"),
-        scheduledArrival: new Date("2026-12-09T08:00:00Z"),
+        scheduledDeparture: new Date("2026-12-09T14:00:00+02:00"),
+        scheduledArrival: new Date("2026-12-09T15:05:00+02:00"),
         status: "SCHEDULED",
         terminal: "1",
-        aircraft: "Airbus A320",
+        confirmationCode: "CAISHARM",
         tripId: familyTrip.id,
       },
     }),
     prisma.flight.create({
       data: {
-        flightNumber: "SV2311",
+        flightNumber: "SV1277",
         airline: "Saudia",
         airlineCode: "SV",
-        departureAirport: "SSH",
-        departureCity: "Sharm El Sheikh",
-        arrivalAirport: "JED",
-        arrivalCity: "Jeddah",
-        scheduledDeparture: new Date("2026-12-13T10:00:00Z"),
-        scheduledArrival: new Date("2026-12-13T12:30:00Z"),
+        departureAirport: "CAI",
+        departureCity: "Cairo",
+        arrivalAirport: "MED",
+        arrivalCity: "Madinah",
+        scheduledDeparture: new Date("2026-12-15T16:45:00+02:00"),
+        scheduledArrival: new Date("2026-12-15T19:35:00+03:00"),
         status: "SCHEDULED",
-        terminal: "1",
-        aircraft: "Airbus A330-300",
+        terminal: "5",
         tripId: familyTrip.id,
       },
     }),
     prisma.flight.create({
       data: {
-        flightNumber: "SV1124",
-        airline: "Saudia",
-        airlineCode: "SV",
-        departureAirport: "MED",
-        departureCity: "Madinah",
-        arrivalAirport: "DXB",
-        arrivalCity: "Dubai",
-        scheduledDeparture: new Date("2026-12-22T18:00:00Z"),
-        scheduledArrival: new Date("2026-12-22T21:30:00Z"),
+        flightNumber: "MS664",
+        airline: "EgyptAir",
+        airlineCode: "MS",
+        departureAirport: "JED",
+        departureCity: "Jeddah",
+        arrivalAirport: "CAI",
+        arrivalCity: "Cairo",
+        scheduledDeparture: new Date("2026-12-24T12:00:00+03:00"),
+        scheduledArrival: new Date("2026-12-24T13:20:00+02:00"),
         status: "SCHEDULED",
         terminal: "1",
-        gate: "C8",
-        aircraft: "Boeing 787-9",
         tripId: familyTrip.id,
       },
     }),
   ]);
   console.log(`  ✓ Created ${familyFlights.length} flights for family trip`);
+
+  await prisma.stay.createMany({
+    data: [
+      {
+        hotelName: "Cairo Marriott Hotel",
+        address: "16 Saray El Gezira Street, Zamalek, Cairo 11211, Egypt",
+        city: "Cairo",
+        country: "Egypt",
+        checkIn: new Date("2026-12-05T14:00:00+02:00"),
+        checkOut: new Date("2026-12-09T12:00:00+02:00"),
+        checkInLabel: "2:00 PM GMT+2",
+        checkOutLabel: "12:00 PM GMT+2",
+        guests: 5,
+        tripId: familyTrip.id,
+      },
+      {
+        hotelName: "Sunstaro Royal Beach Resort",
+        address: "Ras Nosrani Bay, 46619 Sharm El Sheikh, Egypt",
+        city: "Sharm El Sheikh",
+        country: "Egypt",
+        checkIn: new Date("2026-12-09T14:00:00+02:00"),
+        checkOut: new Date("2026-12-12T12:00:00+02:00"),
+        checkInLabel: "2:00 PM GMT+2",
+        checkOutLabel: "12:00 PM GMT+2",
+        guests: 5,
+        tripId: familyTrip.id,
+      },
+      {
+        hotelName: "Hilton Cairo Heliopolis",
+        address: "El-Orouba, Qism El Nozha, Cairo Governorate 2466, Cairo, Egypt",
+        city: "Cairo",
+        country: "Egypt",
+        checkIn: new Date("2026-12-12T14:00:00+02:00"),
+        checkOut: new Date("2026-12-15T12:00:00+02:00"),
+        checkInLabel: "2:00 PM GMT+2",
+        checkOutLabel: "12:00 PM GMT+2",
+        guests: 5,
+        tripId: familyTrip.id,
+      },
+      {
+        hotelName: "Madinah Hilton",
+        address: "Opposite Prophet Mosque, King Fahad St, Madinah 41419, Saudi Arabia",
+        city: "Madinah",
+        country: "Saudi Arabia",
+        checkIn: new Date("2026-12-15T22:00:00+03:00"),
+        checkOut: new Date("2026-12-19T12:00:00+03:00"),
+        checkInLabel: "10:00 PM GMT+3",
+        checkOutLabel: "12:00 PM GMT+3",
+        guests: 5,
+        tripId: familyTrip.id,
+      },
+      {
+        hotelName: "Hilton Suites Jabal Omar Makkah",
+        address: "Jabal Omar, Ibrahim Al Khalil, Makkah 24231, Saudi Arabia",
+        city: "Makkah",
+        country: "Saudi Arabia",
+        checkIn: new Date("2026-12-19T16:00:00+03:00"),
+        checkOut: new Date("2026-12-22T12:00:00+03:00"),
+        checkInLabel: "4:00 PM GMT+3",
+        checkOutLabel: "12:00 PM GMT+3",
+        guests: 5,
+        tripId: familyTrip.id,
+      },
+    ],
+  });
+  console.log("  ✓ Created stays for family trip");
 
   // ─── Family Activities ────────────────────────────────────────────────────
   // Day 1 (Dec 5) — Arrive Cairo

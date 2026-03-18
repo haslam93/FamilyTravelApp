@@ -17,7 +17,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import { SortableActivityList } from "@/components/sortable-activity-list";
 import { AddActivityModal } from "@/components/add-activity-modal";
@@ -72,6 +72,7 @@ interface TripData {
   travelers: number;
   days: TripDay[];
   flights: FlightData[];
+  stays?: StayData[];
   documents: DocData[];
 }
 
@@ -79,7 +80,8 @@ interface FlightData {
   id: string;
   flightNumber: string;
   airline: string;
-  airlineCode: string;
+  airlineCode: string | null;
+  confirmationCode?: string | null;
   departureCity: string;
   departureAirport: string;
   arrivalCity: string;
@@ -89,6 +91,20 @@ interface FlightData {
   status: string;
   terminal: string | null;
   gate: string | null;
+}
+
+interface StayData {
+  id: string;
+  hotelName: string;
+  address: string | null;
+  city: string;
+  country: string;
+  checkIn: string;
+  checkOut: string;
+  checkInLabel?: string | null;
+  checkOutLabel?: string | null;
+  confirmationCode?: string | null;
+  guests: number;
 }
 
 interface DocData {
@@ -102,15 +118,15 @@ interface DocData {
 const DEMO_TRIPS: Record<string, TripData> = {
   "india-solo-2026": {
     id: "india-solo-2026",
-    name: "India Solo Adventure",
+    name: "Trip to Hyderabad",
     type: "SOLO",
     status: "PLANNING",
-    startDate: "2026-04-10",
-    endDate: "2026-04-20",
+    startDate: "2026-04-28",
+    endDate: "2026-05-11",
     cities: ["Hyderabad", "Delhi"],
     countries: ["India"],
     coverImage: CITY_IMAGES.hyderabad.hero,
-    description: "A solo exploration of Hyderabad and Delhi — street food, history, and tech hubs.",
+    description: "Booked long-haul route through Abu Dhabi with a later Delhi hop before the Emirates return to Toronto.",
     travelers: 1,
     days: [
       {
@@ -145,9 +161,11 @@ const DEMO_TRIPS: Record<string, TripData> = {
       },
     ],
     flights: [
-      { id: "f1", flightNumber: "EK505", airline: "Emirates", airlineCode: "EK", departureCity: "Dubai", departureAirport: "DXB", arrivalCity: "Hyderabad", arrivalAirport: "HYD", scheduledDeparture: "2026-04-10T08:30:00", scheduledArrival: "2026-04-10T13:00:00", status: "SCHEDULED", terminal: "3", gate: null },
-      { id: "f2", flightNumber: "6E2341", airline: "IndiGo", airlineCode: "6E", departureCity: "Hyderabad", departureAirport: "HYD", arrivalCity: "Delhi", arrivalAirport: "DEL", scheduledDeparture: "2026-04-15T06:00:00", scheduledArrival: "2026-04-15T08:30:00", status: "SCHEDULED", terminal: "1", gate: null },
-      { id: "f3", flightNumber: "EK511", airline: "Emirates", airlineCode: "EK", departureCity: "Delhi", departureAirport: "DEL", arrivalCity: "Dubai", arrivalAirport: "DXB", scheduledDeparture: "2026-04-20T14:00:00", scheduledArrival: "2026-04-20T16:30:00", status: "SCHEDULED", terminal: "3", gate: null },
+      { id: "f1", flightNumber: "EY22", confirmationCode: "STTKL", airline: "Etihad Airways", airlineCode: "EY", departureCity: "Toronto", departureAirport: "YYZ", arrivalCity: "Abu Dhabi", arrivalAirport: "AUH", scheduledDeparture: "2026-04-28T15:10:00-04:00", scheduledArrival: "2026-04-29T12:30:00+04:00", status: "SCHEDULED", terminal: "1", gate: null },
+      { id: "f2", flightNumber: "EY358", confirmationCode: "STTKL", airline: "Etihad Airways", airlineCode: "EY", departureCity: "Abu Dhabi", departureAirport: "AUH", arrivalCity: "Hyderabad", arrivalAirport: "HYD", scheduledDeparture: "2026-04-29T14:30:00+04:00", scheduledArrival: "2026-04-29T19:45:00+05:30", status: "SCHEDULED", terminal: "A", gate: null },
+      { id: "f3", flightNumber: "6E6202", confirmationCode: "CCGM9X", airline: "IndiGo", airlineCode: "6E", departureCity: "Hyderabad", departureAirport: "HYD", arrivalCity: "Delhi", arrivalAirport: "DEL", scheduledDeparture: "2026-05-07T10:35:00+05:30", scheduledArrival: "2026-05-07T13:10:00+05:30", status: "SCHEDULED", terminal: "1", gate: null },
+      { id: "f4", flightNumber: "EK513", confirmationCode: "JMH5CJ", airline: "Emirates", airlineCode: "EK", departureCity: "Delhi", departureAirport: "DEL", arrivalCity: "Dubai", arrivalAirport: "DXB", scheduledDeparture: "2026-05-10T04:25:00+05:30", scheduledArrival: "2026-05-10T06:25:00+04:00", status: "SCHEDULED", terminal: "3", gate: null },
+      { id: "f5", flightNumber: "EK241", confirmationCode: "JMH5CJ", airline: "Emirates", airlineCode: "EK", departureCity: "Dubai", departureAirport: "DXB", arrivalCity: "Toronto", arrivalAirport: "YYZ", scheduledDeparture: "2026-05-11T03:30:00+04:00", scheduledArrival: "2026-05-11T09:30:00-04:00", status: "SCHEDULED", terminal: "3", gate: null },
     ],
     documents: [
       { id: "d1", name: "India Visa", type: "VISA" },
@@ -156,15 +174,15 @@ const DEMO_TRIPS: Record<string, TripData> = {
   },
   "family-egypt-saudi-2026": {
     id: "family-egypt-saudi-2026",
-    name: "Egypt & Umrah Family Trip",
+    name: "Trip to Cairo and Umrah",
     type: "FAMILY",
     status: "PLANNING",
     startDate: "2026-12-05",
-    endDate: "2026-12-22",
-    cities: ["Cairo", "Sharm El Sheikh", "Makkah", "Madinah"],
+    endDate: "2026-12-24",
+    cities: ["Cairo", "Sharm El Sheikh", "Madinah", "Makkah"],
     countries: ["Egypt", "Saudi Arabia"],
     coverImage: CITY_IMAGES.cairo.hero,
-    description: "Family trip combining Egypt sightseeing with Umrah in Saudi Arabia. 5 travelers including 3 kids.",
+    description: "Family itinerary with Cairo and Sharm stays, then the Umrah leg through Madinah and Makkah.",
     travelers: 5,
     days: [
       {
@@ -190,9 +208,17 @@ const DEMO_TRIPS: Record<string, TripData> = {
       },
     ],
     flights: [
-      { id: "ff1", flightNumber: "MS916", airline: "EgyptAir", airlineCode: "MS", departureCity: "Dubai", departureAirport: "DXB", arrivalCity: "Cairo", arrivalAirport: "CAI", scheduledDeparture: "2026-12-05T07:00:00", scheduledArrival: "2026-12-05T09:30:00", status: "SCHEDULED", terminal: "1", gate: null },
-      { id: "ff2", flightNumber: "MS714", airline: "EgyptAir", airlineCode: "MS", departureCity: "Cairo", departureAirport: "CAI", arrivalCity: "Sharm El Sheikh", arrivalAirport: "SSH", scheduledDeparture: "2026-12-10T10:00:00", scheduledArrival: "2026-12-10T11:00:00", status: "SCHEDULED", terminal: null, gate: null },
-      { id: "ff3", flightNumber: "SV1234", airline: "Saudia", airlineCode: "SV", departureCity: "Sharm El Sheikh", departureAirport: "SSH", arrivalCity: "Jeddah", arrivalAirport: "JED", scheduledDeparture: "2026-12-14T12:00:00", scheduledArrival: "2026-12-14T14:00:00", status: "SCHEDULED", terminal: null, gate: null },
+      { id: "ff1", flightNumber: "MS996", airline: "EgyptAir", airlineCode: "MS", departureCity: "Toronto", departureAirport: "YYZ", arrivalCity: "Cairo", arrivalAirport: "CAI", scheduledDeparture: "2026-12-05T12:00:00-05:00", scheduledArrival: "2026-12-06T05:25:00+02:00", status: "SCHEDULED", terminal: "1", gate: null },
+      { id: "ff2", flightNumber: "MS762", confirmationCode: "CAISHARM", airline: "EgyptAir", airlineCode: "MS", departureCity: "Cairo", departureAirport: "CAI", arrivalCity: "Sharm El Sheikh", arrivalAirport: "SSH", scheduledDeparture: "2026-12-09T14:00:00+02:00", scheduledArrival: "2026-12-09T15:05:00+02:00", status: "SCHEDULED", terminal: "1", gate: null },
+      { id: "ff3", flightNumber: "SV1277", airline: "Saudia", airlineCode: "SV", departureCity: "Cairo", departureAirport: "CAI", arrivalCity: "Madinah", arrivalAirport: "MED", scheduledDeparture: "2026-12-15T16:45:00+02:00", scheduledArrival: "2026-12-15T19:35:00+03:00", status: "SCHEDULED", terminal: "5", gate: null },
+      { id: "ff4", flightNumber: "MS664", airline: "EgyptAir", airlineCode: "MS", departureCity: "Jeddah", departureAirport: "JED", arrivalCity: "Cairo", arrivalAirport: "CAI", scheduledDeparture: "2026-12-24T12:00:00+03:00", scheduledArrival: "2026-12-24T13:20:00+02:00", status: "SCHEDULED", terminal: "1", gate: null },
+    ],
+    stays: [
+      { id: "s1", hotelName: "Cairo Marriott Hotel", address: "16 Saray El Gezira Street, Zamalek, Cairo 11211, Egypt", city: "Cairo", country: "Egypt", checkIn: "2026-12-05T14:00:00+02:00", checkOut: "2026-12-09T12:00:00+02:00", checkInLabel: "2:00 PM GMT+2", checkOutLabel: "12:00 PM GMT+2", guests: 5 },
+      { id: "s2", hotelName: "Sunstaro Royal Beach Resort", address: "Ras Nosrani Bay, 46619 Sharm El Sheikh, Egypt", city: "Sharm El Sheikh", country: "Egypt", checkIn: "2026-12-09T14:00:00+02:00", checkOut: "2026-12-12T12:00:00+02:00", checkInLabel: "2:00 PM GMT+2", checkOutLabel: "12:00 PM GMT+2", guests: 5 },
+      { id: "s3", hotelName: "Hilton Cairo Heliopolis", address: "El-Orouba, Qism El Nozha, Cairo Governorate 2466, Cairo, Egypt", city: "Cairo", country: "Egypt", checkIn: "2026-12-12T14:00:00+02:00", checkOut: "2026-12-15T12:00:00+02:00", checkInLabel: "2:00 PM GMT+2", checkOutLabel: "12:00 PM GMT+2", guests: 5 },
+      { id: "s4", hotelName: "Madinah Hilton", address: "Opposite Prophet Mosque, King Fahad St, Madinah 41419, Saudi Arabia", city: "Madinah", country: "Saudi Arabia", checkIn: "2026-12-15T22:00:00+03:00", checkOut: "2026-12-19T12:00:00+03:00", checkInLabel: "10:00 PM GMT+3", checkOutLabel: "12:00 PM GMT+3", guests: 5 },
+      { id: "s5", hotelName: "Hilton Suites Jabal Omar Makkah", address: "Jabal Omar Ibrahim Al Khalil, Makkah 24231, Saudi Arabia", city: "Makkah", country: "Saudi Arabia", checkIn: "2026-12-19T16:00:00+03:00", checkOut: "2026-12-22T12:00:00+03:00", checkInLabel: "4:00 PM GMT+3", checkOutLabel: "12:00 PM GMT+3", guests: 5 },
     ],
     documents: [
       { id: "fd1", name: "Passports", type: "PASSPORT" },
@@ -219,6 +245,7 @@ function EditFlightModal({
       flightNumber: "",
       airline: "",
       airlineCode: "",
+      confirmationCode: null,
       departureCity: "",
       departureAirport: "",
       arrivalCity: "",
@@ -230,6 +257,53 @@ function EditFlightModal({
       gate: null,
     }
   );
+  const [lookupState, setLookupState] = useState<"idle" | "loading" | "error">("idle");
+  const [lookupMessage, setLookupMessage] = useState<string | null>(null);
+
+  const handleLookup = async () => {
+    const normalizedFlightNumber = form.flightNumber.trim().toUpperCase();
+
+    if (!normalizedFlightNumber) {
+      return;
+    }
+
+    setLookupState("loading");
+    setLookupMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/flights/status?flight=${encodeURIComponent(normalizedFlightNumber)}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Flight lookup unavailable");
+      }
+
+      const data = await response.json();
+
+      setForm((prev) => ({
+        ...prev,
+        flightNumber: data.flightNumber ?? prev.flightNumber,
+        airline: data.airline ?? prev.airline,
+        airlineCode: data.airlineCode ?? prev.airlineCode,
+        departureCity: data.departure?.city ?? prev.departureCity,
+        departureAirport: data.departure?.airport ?? prev.departureAirport,
+        arrivalCity: data.arrival?.city ?? prev.arrivalCity,
+        arrivalAirport: data.arrival?.airport ?? prev.arrivalAirport,
+        scheduledDeparture: data.departure?.scheduled ?? prev.scheduledDeparture,
+        scheduledArrival: data.arrival?.scheduled ?? prev.scheduledArrival,
+        status: data.status ?? prev.status,
+        terminal: data.departure?.terminal ?? prev.terminal,
+        gate: data.departure?.gate ?? prev.gate,
+      }));
+
+      setLookupState("idle");
+      setLookupMessage("Filled route and timing details from live flight data.");
+    } catch {
+      setLookupState("error");
+      setLookupMessage("No live match found. You can keep entering the flight manually.");
+    }
+  };
 
   return (
     <motion.div
@@ -254,11 +328,19 @@ function EditFlightModal({
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Flight Number</label>
-              <input value={form.flightNumber} onChange={(e) => setForm({ ...form, flightNumber: e.target.value })}
+              <input value={form.flightNumber} onBlur={() => void handleLookup()} onChange={(e) => setForm({ ...form, flightNumber: e.target.value.toUpperCase() })}
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="EK505" />
+              <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                Leaves the field, then auto-fills when AirLabs finds a match.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1">Confirmation</label>
+              <input value={form.confirmationCode || ""} onChange={(e) => setForm({ ...form, confirmationCode: e.target.value || null })}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40 uppercase" placeholder="ABC123" />
             </div>
             <div>
               <label className="text-xs font-bold text-slate-500 block mb-1">Airline</label>
@@ -266,6 +348,12 @@ function EditFlightModal({
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-coral/40" placeholder="Emirates" />
             </div>
           </div>
+
+          {lookupMessage && (
+            <div className={`rounded-2xl px-3 py-2 text-xs font-bold ${lookupState === "error" ? "bg-amber-50 text-amber-700" : "bg-sky-50 text-sky-700"}`}>
+              {lookupState === "loading" ? "Looking up flight details..." : lookupMessage}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -442,56 +530,172 @@ export default function TripDetailPage() {
   const params = useParams();
   const tripId = params.id as string;
   const [trip, setTrip] = useState<TripData | null>(() => DEMO_TRIPS[tripId] ?? null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(0);
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [showEditTrip, setShowEditTrip] = useState(false);
   const [showEditFlight, setShowEditFlight] = useState(false);
   const [editingFlight, setEditingFlight] = useState<FlightData | null>(null);
-  const [activeTab, setActiveTab] = useState<"schedule" | "places" | "flights" | "docs">("schedule");
+  const [activeTab, setActiveTab] = useState<"schedule" | "places" | "flights" | "stays" | "docs">("schedule");
 
-  const handleAddActivity = useCallback((activity: Omit<Activity, "id" | "sortOrder">) => {
-    if (!trip) return;
-    const newActivity: Activity = {
-      ...activity,
-      id: `new-${Date.now()}`,
-      sortOrder: trip.days[selectedDay]?.activities.length ?? 0,
-    };
-    setTrip((prev) => {
-      if (!prev) return prev;
-      const days = [...prev.days];
-      days[selectedDay] = {
-        ...days[selectedDay],
-        activities: [...days[selectedDay].activities, newActivity],
-      };
-      return { ...prev, days };
-    });
-    setShowAddActivity(false);
-  }, [trip, selectedDay]);
+  const loadTrip = useCallback(async () => {
+    setIsLoading(true);
 
-  const handleSaveFlight = (flight: FlightData) => {
-    setTrip((prev) => {
-      if (!prev) return prev;
-      const idx = prev.flights.findIndex((f) => f.id === flight.id);
-      const flights = [...prev.flights];
-      if (idx >= 0) {
-        flights[idx] = flight;
-      } else {
-        flights.push(flight);
+    try {
+      const response = await fetch(`/api/trips/${tripId}`, { cache: "no-store" });
+
+      if (!response.ok) {
+        throw new Error(response.status === 404 ? "Trip not found in the database yet." : "Failed to load trip details.");
       }
-      return { ...prev, flights };
+
+      const data = await response.json();
+      setTrip({ ...data, stays: data.stays ?? [] });
+      setLoadError(null);
+    } catch (error) {
+      const fallbackTrip = DEMO_TRIPS[tripId] ?? null;
+      setTrip(fallbackTrip);
+      setLoadError(error instanceof Error ? error.message : "Failed to load trip details.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [tripId]);
+
+  useEffect(() => {
+    void loadTrip();
+  }, [loadTrip]);
+
+  useEffect(() => {
+    setSelectedDay((prev) => {
+      if (!trip) {
+        return 0;
+      }
+
+      return Math.min(prev, Math.max(trip.days.length - 1, 0));
     });
+  }, [trip]);
+
+  const handleAddActivity = useCallback(async (activity: Omit<Activity, "id" | "sortOrder">) => {
+    if (!trip || !trip.days[selectedDay]) return;
+
+    try {
+      const response = await fetch("/api/activities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...activity, tripDayId: trip.days[selectedDay].id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save activity.");
+      }
+
+      const createdActivity = await response.json();
+
+      setTrip((prev) => {
+        if (!prev) return prev;
+        const days = [...prev.days];
+        days[selectedDay] = {
+          ...days[selectedDay],
+          activities: [...days[selectedDay].activities, createdActivity],
+        };
+        return { ...prev, days };
+      });
+      setSaveError(null);
+      setShowAddActivity(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to save activity.");
+    }
+  }, [selectedDay, trip]);
+
+  const handleSaveFlight = async (flight: FlightData) => {
+    if (!trip) return;
+
+    try {
+      const existingFlight = trip.flights.some((item) => item.id === flight.id);
+      const response = await fetch(existingFlight ? `/api/flights/${flight.id}` : "/api/flights", {
+        method: existingFlight ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...flight, tripId: trip.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save flight.");
+      }
+
+      const savedFlight = await response.json();
+      setTrip((prev) => {
+        if (!prev) return prev;
+        const idx = prev.flights.findIndex((f) => f.id === savedFlight.id);
+        const flights = [...prev.flights];
+        if (idx >= 0) {
+          flights[idx] = savedFlight;
+        } else {
+          flights.push(savedFlight);
+        }
+        flights.sort((left, right) => new Date(left.scheduledDeparture).getTime() - new Date(right.scheduledDeparture).getTime());
+        return { ...prev, flights };
+      });
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to save flight.");
+    }
   };
 
-  const handleDeleteFlight = (flightId: string) => {
-    setTrip((prev) => {
-      if (!prev) return prev;
-      return { ...prev, flights: prev.flights.filter((f) => f.id !== flightId) };
-    });
+  const handleDeleteFlight = async (flightId: string) => {
+    try {
+      const response = await fetch(`/api/flights/${flightId}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete flight.");
+      }
+
+      setTrip((prev) => {
+        if (!prev) return prev;
+        return { ...prev, flights: prev.flights.filter((f) => f.id !== flightId) };
+      });
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to delete flight.");
+    }
   };
 
-  const handleUpdateTrip = (updates: Partial<TripData>) => {
-    setTrip((prev) => prev ? { ...prev, ...updates } : prev);
+  const handleUpdateTrip = async (updates: Partial<TripData>) => {
+    if (!trip) return;
+
+    try {
+      const response = await fetch(`/api/trips/${trip.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save trip changes.");
+      }
+
+      const updatedTrip = await response.json();
+      setTrip((prev) => prev ? { ...prev, ...updatedTrip } : prev);
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to save trip changes.");
+    }
   };
+
+  if (isLoading && !trip) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="text-center space-y-3">
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }} className="text-5xl">
+              ✈️
+            </motion.div>
+            <p className="text-lg font-bold text-slate-500">Loading trip details</p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!trip) {
     return (
@@ -520,6 +724,7 @@ export default function TripDetailPage() {
 
   const visuals = TRIP_VISUALS[trip.type];
   const currentDay = trip.days[selectedDay];
+  const stays = trip.stays ?? [];
   const totalActivities = trip.days.reduce((sum, d) => sum + d.activities.length, 0);
   const doneActivities = trip.days.reduce(
     (sum, d) => sum + d.activities.filter((a) => a.status === "DONE").length,
@@ -595,11 +800,24 @@ export default function TripDetailPage() {
 
         <div className="px-4 sm:px-6 py-6 space-y-6">
           {/* ─── Stats Strip ─────────────────────────────────────── */}
-          <div className="grid grid-cols-4 gap-3">
+          {loadError && (
+            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+              {loadError}
+            </div>
+          )}
+
+          {saveError && (
+            <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {saveError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {[
               { label: "Days", value: trip.days.length, emoji: "📅", color: "from-sky-400 to-blue-500" },
               { label: "Activities", value: totalActivities, emoji: "📋", color: "from-amber-400 to-orange-500" },
               { label: "Flights", value: trip.flights.length, emoji: "✈️", color: "from-coral to-sunset" },
+              { label: "Stays", value: stays.length, emoji: "🏨", color: "from-indigo-400 to-violet-500" },
               { label: "Docs", value: trip.documents.length, emoji: "📄", color: "from-emerald-400 to-teal-500" },
             ].map((stat, i) => (
               <motion.div
@@ -644,6 +862,7 @@ export default function TripDetailPage() {
               [
                 { key: "schedule", label: "Schedule", emoji: "📅" },
                 { key: "flights", label: "Flights", emoji: "✈️" },
+                { key: "stays", label: "Stays", emoji: "🏨" },
                 { key: "places", label: "Places", emoji: "📍" },
                 { key: "docs", label: "Documents", emoji: "📄" },
               ] as const
@@ -763,6 +982,24 @@ export default function TripDetailPage() {
                             days[selectedDay] = { ...days[selectedDay], activities: reordered };
                             return { ...prev, days };
                           });
+
+                          void fetch("/api/activities", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              reorder: reordered.map((activity) => ({
+                                id: activity.id,
+                                sortOrder: activity.sortOrder,
+                              })),
+                            }),
+                          }).then((response) => {
+                            if (!response.ok) {
+                              throw new Error("Failed to reorder activities.");
+                            }
+                          }).catch((error: unknown) => {
+                            setSaveError(error instanceof Error ? error.message : "Failed to reorder activities.");
+                            void loadTrip();
+                          });
                         }}
                         onStatusChange={(activityId, newStatus) => {
                           setTrip((prev) => {
@@ -774,10 +1011,85 @@ export default function TripDetailPage() {
                             days[selectedDay] = { ...days[selectedDay], activities: acts };
                             return { ...prev, days };
                           });
+
+                          void fetch(`/api/activities/${activityId}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ status: newStatus }),
+                          }).then((response) => {
+                            if (!response.ok) {
+                              throw new Error("Failed to update activity status.");
+                            }
+                          }).catch((error: unknown) => {
+                            setSaveError(error instanceof Error ? error.message : "Failed to update activity status.");
+                            void loadTrip();
+                          });
                         }}
                       />
                     )}
                   </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* ─── Stays Tab ───────────────────────────────────────── */}
+            {activeTab === "stays" && (
+              <motion.div
+                key="stays"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                {stays.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="text-7xl mb-4">🏨</div>
+                    <p className="text-slate-400 font-bold">No stays saved yet</p>
+                    <p className="text-sm text-slate-300 mt-1">Hotel reservations will appear here as dedicated records.</p>
+                  </div>
+                ) : (
+                  stays.map((stay) => (
+                    <motion.div
+                      key={stay.id}
+                      whileHover={{ y: -2, scale: 1.01 }}
+                      className="glass rounded-2xl p-5"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-2xl shadow-md">
+                          🏨
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-black text-slate-800">{stay.hotelName}</p>
+                            <span className="rounded-full bg-indigo-50 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-indigo-700">
+                              {stay.city}
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {new Date(stay.checkIn).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            {" → "}
+                            {new Date(stay.checkOut).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                          {(stay.checkInLabel || stay.checkOutLabel) && (
+                            <p className="text-xs font-semibold text-slate-400">
+                              {stay.checkInLabel ? `Check-in ${stay.checkInLabel}` : ""}
+                              {stay.checkInLabel && stay.checkOutLabel ? " • " : ""}
+                              {stay.checkOutLabel ? `Check-out ${stay.checkOutLabel}` : ""}
+                            </p>
+                          )}
+                          {stay.address && (
+                            <p className="text-sm text-slate-600">{stay.address}</p>
+                          )}
+                          <div className="flex flex-wrap gap-2 pt-1 text-[11px] font-bold text-slate-500">
+                            <span className="rounded-full bg-white/70 px-2.5 py-1">{stay.guests} guests</span>
+                            {stay.confirmationCode && (
+                              <span className="rounded-full bg-white/70 px-2.5 py-1">Confirmation {stay.confirmationCode}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
                 )}
               </motion.div>
             )}

@@ -4,58 +4,51 @@ import { motion } from "framer-motion";
 import { Plane, MapPin, Calendar, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
-import { TripCard } from "@/components/trip-card";
 import { FlightBanner } from "@/components/flight-banner";
+import { TripCard } from "@/components/trip-card";
 import { CITY_IMAGES } from "@/lib/constants";
 
-// ─── Data ────────────────────────────────────────────────────────────────────
+interface ActivitySummary {
+  id: string;
+  status: string;
+}
 
-const DEMO_TRIPS = [
-  {
-    id: "india-solo-2026",
-    name: "India Solo Adventure",
-    type: "SOLO" as const,
-    startDate: "2026-04-10",
-    endDate: "2026-04-20",
-    cities: ["Hyderabad", "Delhi"],
-    countries: ["India"],
-    coverImage: CITY_IMAGES.hyderabad.hero,
-    travelers: 1,
-    activitiesComplete: 3,
-    activitiesTotal: 15,
-  },
-  {
-    id: "family-egypt-saudi-2026",
-    name: "Egypt & Umrah Family Trip",
-    type: "FAMILY" as const,
-    startDate: "2026-12-05",
-    endDate: "2026-12-22",
-    cities: ["Cairo", "Sharm El Sheikh", "Makkah", "Madinah"],
-    countries: ["Egypt", "Saudi Arabia"],
-    coverImage: CITY_IMAGES.cairo.hero,
-    travelers: 5,
-    activitiesComplete: 0,
-    activitiesTotal: 40,
-  },
-];
+interface TripDaySummary {
+  id: string;
+  activities: ActivitySummary[];
+}
 
-const DEMO_FLIGHT = {
-  flightNumber: "EK505",
-  airline: "Emirates",
-  airlineCode: "EK",
-  departureCity: "Dubai",
-  departureAirport: "DXB",
-  arrivalCity: "Hyderabad",
-  arrivalAirport: "HYD",
-  scheduledDeparture: "2026-04-10T08:30:00",
-  status: "SCHEDULED",
-  gate: undefined,
-  terminal: "3",
-};
+interface FlightSummary {
+  id: string;
+  flightNumber: string;
+  airline: string;
+  airlineCode: string | null;
+  departureCity: string;
+  departureAirport: string;
+  arrivalCity: string;
+  arrivalAirport: string;
+  scheduledDeparture: string;
+  status: string;
+  gate: string | null;
+  terminal: string | null;
+}
 
-// ─── Animated floating elements ──────────────────────────────────────────────
+interface TripSummary {
+  id: string;
+  name: string;
+  type: "SOLO" | "FAMILY";
+  startDate: string;
+  endDate: string;
+  cities: string[];
+  countries: string[];
+  coverImage: string | null;
+  travelers: number;
+  days: TripDaySummary[];
+  flights: FlightSummary[];
+}
 
 function FloatingEmoji({ emoji, delay, x, y }: { emoji: string; delay: number; x: string; y: string }) {
   return (
@@ -73,8 +66,6 @@ function FloatingEmoji({ emoji, delay, x, y }: { emoji: string; delay: number; x
     </motion.div>
   );
 }
-
-// ─── Animations ──────────────────────────────────────────────────────────────
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -94,11 +85,71 @@ const scaleIn = {
   show: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 300, damping: 15 } },
 };
 
+function getFallbackImage(city?: string) {
+  const normalized = city?.toLowerCase().replace(/\s+/g, "-");
+  return normalized && CITY_IMAGES[normalized] ? CITY_IMAGES[normalized].hero : CITY_IMAGES.cairo.hero;
+}
+
 export default function DashboardPage() {
+  const [trips, setTrips] = useState<TripSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadTrips = async () => {
+      try {
+        const response = await fetch("/api/trips", { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error("Failed to load trips.");
+        }
+
+        const data = await response.json();
+        setTrips(data);
+        setError(null);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load trips.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadTrips();
+  }, []);
+
+  const tripCards = trips.map((trip) => ({
+    id: trip.id,
+    name: trip.name,
+    type: trip.type,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    cities: trip.cities,
+    countries: trip.countries,
+    coverImage: trip.coverImage || getFallbackImage(trip.cities[0]),
+    travelers: trip.travelers,
+    activitiesComplete: trip.days.reduce(
+      (sum, day) => sum + day.activities.filter((activity) => activity.status === "DONE").length,
+      0
+    ),
+    activitiesTotal: trip.days.reduce((sum, day) => sum + day.activities.length, 0),
+  }));
+
+  const upcomingFlights = trips
+    .flatMap((trip) => trip.flights)
+    .filter((flight) => new Date(flight.scheduledDeparture).getTime() >= Date.now())
+    .sort(
+      (left, right) =>
+        new Date(left.scheduledDeparture).getTime() -
+        new Date(right.scheduledDeparture).getTime()
+    );
+  const nextFlight = upcomingFlights[0];
+
+  const totalDestinations = new Set(trips.flatMap((trip) => trip.cities)).size;
+  const totalDays = trips.reduce((sum, trip) => sum + trip.days.length, 0);
+
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 relative overflow-hidden">
-        {/* Floating background emojis */}
         <FloatingEmoji emoji="✈️" delay={0} x="85%" y="5%" />
         <FloatingEmoji emoji="🌴" delay={1.5} x="5%" y="15%" />
         <FloatingEmoji emoji="🕌" delay={0.8} x="92%" y="50%" />
@@ -111,12 +162,10 @@ export default function DashboardPage() {
           animate="show"
           className="space-y-8 relative z-10"
         >
-          {/* ─── Welcome Hero ────────────────────────────────────────── */}
           <motion.div
             variants={itemVariants}
             className="relative rounded-[2rem] overflow-hidden bg-gradient-to-br from-coral via-sunset to-bubblegum p-6 sm:p-8 text-white shadow-2xl shadow-coral/30"
           >
-            {/* Decorative circles */}
             <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10" />
             <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10" />
             <div className="absolute top-1/2 right-1/4 w-20 h-20 rounded-full bg-white/5" />
@@ -142,7 +191,8 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                The Aslam Family<br />
+                The Aslam Family
+                <br />
                 <span className="text-white/80">Adventures ✨</span>
               </motion.h1>
 
@@ -160,7 +210,6 @@ export default function DashboardPage() {
                 })}
               </motion.p>
 
-              {/* Quick stat pills */}
               <motion.div
                 className="flex flex-wrap gap-2 mt-4"
                 initial={{ opacity: 0, y: 10 }}
@@ -168,19 +217,24 @@ export default function DashboardPage() {
                 transition={{ delay: 0.7 }}
               >
                 <span className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-xs font-bold flex items-center gap-1.5">
-                  <Plane size={12} /> 2 Trips Planned
+                  <Plane size={12} /> {trips.length} Trips Planned
                 </span>
                 <span className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-xs font-bold flex items-center gap-1.5">
-                  <MapPin size={12} /> 6 Destinations
+                  <MapPin size={12} /> {totalDestinations} Destinations
                 </span>
                 <span className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-sm text-xs font-bold flex items-center gap-1.5">
-                  <Calendar size={12} /> 27 Days Total
+                  <Calendar size={12} /> {totalDays} Days Total
                 </span>
               </motion.div>
             </div>
           </motion.div>
 
-          {/* ─── Next Flight ──────────────────────────────────────────── */}
+          {error && (
+            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+              {error}
+            </div>
+          )}
+
           <motion.div variants={itemVariants}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-extrabold text-slate-700 flex items-center gap-2">
@@ -199,10 +253,27 @@ export default function DashboardPage() {
                 View all <Sparkles size={12} />
               </Link>
             </div>
-            <FlightBanner {...DEMO_FLIGHT} />
+            {nextFlight ? (
+              <FlightBanner
+                flightNumber={nextFlight.flightNumber}
+                airline={nextFlight.airline}
+                airlineCode={nextFlight.airlineCode || nextFlight.airline.slice(0, 2).toUpperCase()}
+                departureCity={nextFlight.departureCity}
+                departureAirport={nextFlight.departureAirport}
+                arrivalCity={nextFlight.arrivalCity}
+                arrivalAirport={nextFlight.arrivalAirport}
+                scheduledDeparture={nextFlight.scheduledDeparture}
+                status={nextFlight.status}
+                gate={nextFlight.gate || undefined}
+                terminal={nextFlight.terminal || undefined}
+              />
+            ) : (
+              <div className="rounded-3xl bg-slate-100 px-5 py-8 text-center text-slate-500 font-semibold">
+                {loading ? "Loading upcoming flights..." : "No upcoming flights saved yet."}
+              </div>
+            )}
           </motion.div>
 
-          {/* ─── Trip Cards ──────────────────────────────────────────── */}
           <motion.div variants={itemVariants}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-extrabold text-slate-700 flex items-center gap-2">
@@ -210,19 +281,19 @@ export default function DashboardPage() {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {DEMO_TRIPS.map((trip, i) => (
-                <motion.div
-                  key={trip.id}
-                  variants={scaleIn}
-                  custom={i}
-                >
+              {tripCards.map((trip, i) => (
+                <motion.div key={trip.id} variants={scaleIn} custom={i}>
                   <TripCard {...trip} />
                 </motion.div>
               ))}
             </div>
+            {!loading && tripCards.length === 0 && (
+              <div className="rounded-3xl bg-slate-100 px-5 py-8 text-center text-slate-500 font-semibold mt-4">
+                No trips in the database yet.
+              </div>
+            )}
           </motion.div>
 
-          {/* ─── Destinations Carousel ───────────────────────────────── */}
           <motion.div variants={itemVariants}>
             <h2 className="text-lg font-extrabold text-slate-700 flex items-center gap-2 mb-4">
               <span>🌍</span> Destinations
@@ -248,22 +319,16 @@ export default function DashboardPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-3">
                     <p className="text-xs font-black text-white drop-shadow-lg">
-                      {key
-                        .replace(/-/g, " ")
-                        .replace(/\b\w/g, (c) => c.toUpperCase())}
+                      {key.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                     </p>
-                    <p className="text-[10px] text-white/60 font-semibold mt-0.5">
-                      {img.credit}
-                    </p>
+                    <p className="text-[10px] text-white/60 font-semibold mt-0.5">{img.credit}</p>
                   </div>
-                  {/* Hover glow ring */}
                   <div className="absolute inset-0 rounded-[1.4rem] opacity-0 group-hover:opacity-100 transition-opacity duration-300 ring-2 ring-white/40 ring-inset" />
                 </motion.div>
               ))}
             </div>
           </motion.div>
 
-          {/* ─── Quick Actions ───────────────────────────────────────── */}
           <motion.div variants={itemVariants}>
             <h2 className="text-lg font-extrabold text-slate-700 flex items-center gap-2 mb-4">
               <span>⚡</span> Quick Actions
@@ -272,9 +337,15 @@ export default function DashboardPage() {
               {[
                 {
                   emoji: "✈️",
-                  label: "Add Flight",
+                  label: "Manage Flights",
                   gradient: "from-sky-400 to-ocean",
                   href: "/flights",
+                },
+                {
+                  emoji: "🏨",
+                  label: "Manage Stays",
+                  gradient: "from-indigo-400 to-violet-500",
+                  href: "/stays",
                 },
                 {
                   emoji: "📍",
@@ -287,12 +358,6 @@ export default function DashboardPage() {
                   label: "Upload Doc",
                   gradient: "from-amber-400 to-orange-500",
                   href: "/documents",
-                },
-                {
-                  emoji: "📅",
-                  label: "Calendar",
-                  gradient: "from-purple-400 to-pink-500",
-                  href: "/settings",
                 },
                 {
                   emoji: "🕌",
@@ -316,7 +381,6 @@ export default function DashboardPage() {
                     transition={{ delay: 0.05 * i }}
                     className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${action.gradient} p-5 text-white shadow-xl hover:shadow-2xl transition-shadow cursor-pointer`}
                   >
-                    {/* Decorative circle */}
                     <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10" />
                     <span className="text-3xl mb-2 block">{action.emoji}</span>
                     <span className="text-sm font-bold block">{action.label}</span>

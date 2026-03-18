@@ -134,6 +134,17 @@ ms.date: 2026-03-09
 - [x] Rewrite documents page with Add/Edit modal and upload button
 - [x] Verify build compiles and passes TypeScript checks
 
+## Phase 15 — Real Data Migration and Stays
+
+- [x] Replace remaining demo-backed trip and dashboard flows with API-backed data
+- [x] Add dedicated stays model and CRUD API
+- [x] Load actual Hyderabad and Egypt family trip flight and hotel data from screenshots into seed data
+- [x] Add flight autofill on blur using flight number lookup
+- [x] Migrate flights page to real CRUD data
+- [x] Migrate places page to real CRUD data with correct Google Maps links
+- [x] Add dedicated stays page and navigation
+- [ ] Apply targeted visual polish after persistence fixes
+
 ## Notes
 
 > Update this file after completing each task. Mark items with [x] when done and [~] when in progress.
@@ -151,3 +162,9 @@ ms.date: 2026-03-09
 > **Session 4 (UI rethink + CRUD)**: Removed TripIt integration entirely (API shut down per help.tripit.com). Fixed Google Calendar OAuth — settings page was redirecting to callback URL instead of Google consent screen; created new `/api/auth/google/start` route. Full UI redesign across all pages: dashboard with floating emojis, gradient hero card, animated family avatars, 6 quick action buttons; trip detail page with Edit Trip modal (name, dates, travelers, cities), Edit Flight modal (full flight form), inline add/edit/delete for flights; flights page with full CRUD modals; places page with Add/Edit/Delete modals and kid-friendly toggle; documents page with Add/Edit modal. Fixed trailing code in trip page, TypeScript `type: "spring"` narrowing issues. Build compiles cleanly.
 >
 > **Session 5 (deployment hardening)**: Stabilized GitHub Actions by fixing lint blockers, switching artifact packaging from invalid tar-based zip generation to a real zip, and updating Bicep to preview on every deploy while only applying infra when infra files change. Reworked Azure PostgreSQL access to use App Service managed identity with Microsoft Entra authentication, added PostgreSQL principal/permission setup in the deploy workflow, updated runtime Prisma connection handling for token refresh, and refreshed README and environment documentation.
+>
+> **Session 6 (real data migration)**: Began replacing demo-backed travel flows with database-backed data. Added a new implementation phase for dedicated stays, real flight CRUD, and loading actual Hyderabad and Egypt family trip travel records from provided screenshots so the app data matches the itinerary being planned.
+>
+> **Session 6 (implementation checkpoint)**: Added a dedicated `Stay` model to Prisma, created `/api/flights` and `/api/stays` CRUD routes, updated the trip detail page to prefer API data while falling back to local data, added flight-number autofill on blur in the flight editor, and loaded the screenshot-based Hyderabad and Egypt/Umrah flights and hotel stays into both seed data and the trip fallback state. Local database sync was blocked because `DATABASE_URL` is not configured in the current shell, so `prisma db push` and reseeding could not be executed from this environment.
+>
+> **Session 6 (UI migration completion)**: Replaced the remaining demo-backed dashboard, flights, and places views with API-backed implementations, added the dedicated stays page and navigation entries, and corrected place link generation so Google Maps actions use persisted place IDs or stable query URLs.
