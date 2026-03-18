@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Family Travel Companion icon</title>
+  <desc id="desc">Rounded coral travel badge with airplane and palm details.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff7a6b"/>
+      <stop offset="100%" stop-color="#ffb347"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
+  <circle cx="392" cy="118" r="42" fill="#fff3d2" opacity="0.9"/>
+  <path d="M114 322c29-78 101-133 184-133 36 0 70 10 100 28l-26 38c-21-11-47-18-74-18-61 0-115 36-140 92z" fill="#ffffff" opacity="0.18"/>
+  <path d="M196 333l71-36 93-148c7-11 23-14 33-6 11 7 14 22 7 33L301 320l37 71c5 10 1 22-9 28-10 5-22 1-28-9l-36-70-53 8-28 46c-7 10-20 14-31 8-10-7-14-20-8-31z" fill="#ffffff"/>
+  <path d="M116 208c30 10 56 29 75 56l-22 18c-14-20-34-35-58-42z" fill="#0f766e"/>
+  <path d="M131 177c21 8 39 22 53 42l-18 15c-11-15-25-26-42-33z" fill="#134e4a"/>
+  <rect x="96" y="283" width="40" height="102" rx="20" fill="#14532d"/>
+</svg>

@@ -13,7 +13,9 @@ export const metadata: Metadata = {
     title: "Travel App",
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icons/app-icon.svg",
+    shortcut: "/icons/app-icon.svg",
+    apple: "/icons/app-icon.svg",
   },
 };
 

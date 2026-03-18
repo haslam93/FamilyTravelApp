@@ -143,7 +143,7 @@ ms.date: 2026-03-09
 - [x] Migrate flights page to real CRUD data
 - [x] Migrate places page to real CRUD data with correct Google Maps links
 - [x] Add dedicated stays page and navigation
-- [ ] Apply targeted visual polish after persistence fixes
+- [x] Apply targeted visual polish after persistence fixes
 
 ## Notes
 
@@ -168,3 +168,5 @@ ms.date: 2026-03-09
 > **Session 6 (implementation checkpoint)**: Added a dedicated `Stay` model to Prisma, created `/api/flights` and `/api/stays` CRUD routes, updated the trip detail page to prefer API data while falling back to local data, added flight-number autofill on blur in the flight editor, and loaded the screenshot-based Hyderabad and Egypt/Umrah flights and hotel stays into both seed data and the trip fallback state. Local database sync was blocked because `DATABASE_URL` is not configured in the current shell, so `prisma db push` and reseeding could not be executed from this environment.
 >
 > **Session 6 (UI migration completion)**: Replaced the remaining demo-backed dashboard, flights, and places views with API-backed implementations, added the dedicated stays page and navigation entries, and corrected place link generation so Google Maps actions use persisted place IDs or stable query URLs.
+>
+> **Session 7 (deployment recovery)**: Investigated the live Azure site with Playwright and found all Prisma-backed read APIs returning 500 while static routes still rendered. Added a shared fallback travel dataset for trips, flights, stays, and places so the app remains usable when the database/schema is unavailable, fixed missing PWA icon assets, and updated the deploy workflow to run `prisma db push` when no migrations are present and seed only when the target database is empty.

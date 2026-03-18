@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getFallbackFlights } from "@/lib/fallback-data";
 
 // GET /api/flights?tripId=xxx — List flights, optionally scoped to a trip
 export async function GET(req: NextRequest) {
-  try {
-    const tripId = req.nextUrl.searchParams.get("tripId");
+  const tripId = req.nextUrl.searchParams.get("tripId");
 
+  try {
     const flights = await prisma.flight.findMany({
       where: tripId ? { tripId } : undefined,
       orderBy: [{ scheduledDeparture: "asc" }],
@@ -14,7 +15,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(flights);
   } catch (error) {
     console.error("Failed to fetch flights:", error);
-    return NextResponse.json({ error: "Failed to fetch flights" }, { status: 500 });
+    return NextResponse.json(getFallbackFlights(tripId), {
+      headers: {
+        "x-family-travel-data-source": "fallback",
+      },
+    });
   }
 }
 

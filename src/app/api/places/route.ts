@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getFallbackPlaces } from "@/lib/fallback-data";
 
 // GET /api/places — List places with optional filters
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = req.nextUrl;
-    const city = searchParams.get("city");
-    const category = searchParams.get("category");
-    const visited = searchParams.get("visited");
-    const tripDayId = searchParams.get("tripDayId");
-    const q = searchParams.get("q");
+  const { searchParams } = req.nextUrl;
+  const city = searchParams.get("city");
+  const category = searchParams.get("category");
+  const visited = searchParams.get("visited");
+  const tripDayId = searchParams.get("tripDayId");
+  const q = searchParams.get("q");
 
+  try {
     const where: Record<string, unknown> = {};
     if (city) where.city = city;
     if (category) where.category = category;
@@ -26,7 +27,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(places);
   } catch (error) {
     console.error("Failed to fetch places:", error);
-    return NextResponse.json({ error: "Failed to fetch places" }, { status: 500 });
+    return NextResponse.json(
+      getFallbackPlaces({ city, category, visited, tripDayId, q }),
+      {
+        headers: {
+          "x-family-travel-data-source": "fallback",
+        },
+      }
+    );
   }
 }
 

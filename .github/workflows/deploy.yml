@@ -395,7 +395,39 @@ jobs:
         run: |
           export DATABASE_URL="postgresql://${{ steps.postgres.outputs.admin_login }}:${{ secrets.POSTGRES_ADMIN_PASSWORD }}@${{ steps.postgres.outputs.host }}:5432/${{ steps.postgres.outputs.database }}?schema=public&sslmode=require"
           npm install prisma@5.22.0 --no-save
-          npx prisma migrate deploy
+          if [ -d prisma/migrations ] && [ "$(find prisma/migrations -mindepth 1 -maxdepth 1 | head -n 1)" ]; then
+            npx prisma migrate deploy
+          else
+            echo "No Prisma migrations found. Syncing schema with prisma db push instead."
+            npx prisma db push --skip-generate
+          fi
+
+          TRIP_COUNT=$(node <<'NODE'
+          const { PrismaClient } = require('@prisma/client');
+
+          async function main() {
+            const prisma = new PrismaClient();
+            try {
+              const count = await prisma.trip.count();
+              process.stdout.write(String(count));
+            } finally {
+              await prisma.$disconnect();
+            }
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+          )
+
+          if [ "$TRIP_COUNT" = "0" ]; then
+            echo "Database is empty. Running seed data load."
+            npx prisma db seed
+          else
+            echo "Database already has $TRIP_COUNT trips. Skipping destructive seed run."
+          fi
 
       - name: Azure logout
         if: always()
