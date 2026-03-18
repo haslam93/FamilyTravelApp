@@ -4,18 +4,19 @@ import { getFallbackFlights } from "@/lib/fallback-data";
 
 // GET /api/flights?tripId=xxx — List flights, optionally scoped to a trip
 export async function GET(req: NextRequest) {
-  const tripId = req.nextUrl.searchParams.get("tripId");
+  const requestedTripId = req.nextUrl.searchParams.get("tripId");
+  const fallbackFlights = getFallbackFlights(requestedTripId);
 
   try {
     const flights = await prisma.flight.findMany({
-      where: tripId ? { tripId } : undefined,
+      where: requestedTripId ? { tripId: requestedTripId } : undefined,
       orderBy: [{ scheduledDeparture: "asc" }],
     });
 
     return NextResponse.json(flights);
   } catch (error) {
     console.error("Failed to fetch flights:", error);
-    return NextResponse.json(getFallbackFlights(tripId), {
+    return NextResponse.json(fallbackFlights, {
       headers: {
         "x-family-travel-data-source": "fallback",
       },
