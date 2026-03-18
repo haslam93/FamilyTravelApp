@@ -294,13 +294,13 @@ function getDocumentVisual(type: string) {
 }
 
 function deriveFallbackStays(days: TripDay[], tripEndDate: string): StayData[] {
-  const hotelCheckIns = days.flatMap((day, dayIndex) =>
+  const hotelCheckIns = days.flatMap((day) =>
     day.activities
       .filter((activity) => activity.type === "HOTEL_CHECKIN")
-      .map((activity, activityIndex) => ({ day, dayIndex, activity, activityIndex }))
+      .map((activity, activityIndex) => ({ day, activity, activityIndex }))
   );
 
-  return hotelCheckIns.map(({ day, dayIndex, activity, activityIndex }, index) => {
+  return hotelCheckIns.map(({ day, activity, activityIndex }, index) => {
     const nextCheckIn = hotelCheckIns[index + 1];
     const hotelName = activity.notes?.trim() || activity.name.replace(/check-?in/i, "").trim() || `${day.city} Stay`;
 
@@ -1392,7 +1392,7 @@ export default function TripDetailPage() {
                   <div className="text-center py-16 glass rounded-2xl">
                     <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2.5, repeat: Infinity }} className="text-7xl mb-4">📍</motion.div>
                     <h3 className="text-lg font-bold text-slate-600">No places attached yet</h3>
-                    <p className="text-sm text-slate-400 mt-1">Add places for any of this trip's cities and they will show up here.</p>
+                    <p className="text-sm text-slate-400 mt-1">Add places for any of this trip&apos;s cities and they will show up here.</p>
                   </div>
                 ) : (
                   <div className="grid gap-4 lg:grid-cols-2">
