@@ -394,7 +394,7 @@ jobs:
       - name: Run Prisma Migrations
         run: |
           export DATABASE_URL="postgresql://${{ steps.postgres.outputs.admin_login }}:${{ secrets.POSTGRES_ADMIN_PASSWORD }}@${{ steps.postgres.outputs.host }}:5432/${{ steps.postgres.outputs.database }}?schema=public&sslmode=require"
-          npm install prisma@latest --no-save
+          npm install prisma@5.22.0 --no-save
           npx prisma migrate deploy
 
       - name: Azure logout
