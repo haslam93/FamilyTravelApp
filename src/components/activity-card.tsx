@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Check, Clock, SkipForward, Circle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ACTIVITY_TYPE_EMOJI } from "@/lib/constants";
 
 interface ActivityCardProps {
@@ -39,9 +40,14 @@ function formatTime(dateStr: string | null): string {
 }
 
 export function ActivityCard({ activity, index, isLast, onStatusChange }: ActivityCardProps) {
+  const [isHydrated, setIsHydrated] = useState(false);
   const statusConfig = STATUS_CONFIG[activity.status] || STATUS_CONFIG.PLANNED;
   const StatusIcon = statusConfig.icon;
   const emoji = ACTIVITY_TYPE_EMOJI[activity.type] || "📌";
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const nextStatus = () => {
     const currentIdx = STATUS_CYCLE.indexOf(activity.status);
@@ -109,8 +115,8 @@ export function ActivityCard({ activity, index, isLast, onStatusChange }: Activi
             {activity.startTime && (
               <div className="flex items-center gap-1 mt-1 text-xs text-slate-400 font-semibold">
                 <Clock size={12} />
-                <span>{formatTime(activity.startTime)}</span>
-                {activity.endTime && <span> — {formatTime(activity.endTime)}</span>}
+                <span>{isHydrated ? formatTime(activity.startTime) : "..."}</span>
+                {activity.endTime && <span> — {isHydrated ? formatTime(activity.endTime) : "..."}</span>}
               </div>
             )}
 
