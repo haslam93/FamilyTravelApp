@@ -101,6 +101,12 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
       - name: Detect infrastructure changes
         id: infra-changes
         run: |
@@ -394,7 +400,8 @@ jobs:
       - name: Run Prisma Migrations
         run: |
           export DATABASE_URL="postgresql://${{ steps.postgres.outputs.admin_login }}:${{ secrets.POSTGRES_ADMIN_PASSWORD }}@${{ steps.postgres.outputs.host }}:5432/${{ steps.postgres.outputs.database }}?schema=public&sslmode=require"
-          npm install prisma@5.22.0 --no-save
+          npm ci
+          npx prisma generate
           if [ -d prisma/migrations ] && [ "$(find prisma/migrations -mindepth 1 -maxdepth 1 | head -n 1)" ]; then
             npx prisma migrate deploy
           else
